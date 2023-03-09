@@ -29,6 +29,7 @@ from verticapy._utils._sql._sys import _executeSQL
 from verticapy.plotting.base import PlottingBase
 from verticapy.plotting._highcharts.base import hchart_from_vdf
 import verticapy.plotting._matplotlib as vpy_plt
+import verticapy.plotting._plotly as vpy_plotly_plty
 
 
 class vDFPlot:
@@ -1219,6 +1220,7 @@ class vDFPlot:
         dimensions: tuple = None,
         bbox: list = [],
         img: str = "",
+        plot_lib: Literal["matplotlib", "plotly"]="plotly",
         ax: Optional[Axes] = None,
         **style_kwds,
     ):
@@ -1270,35 +1272,6 @@ class vDFPlot:
         """
         from verticapy.machine_learning.vertica.decomposition import PCA
 
-        if len(columns) > 3 and dimensions == None:
-            dimensions = (1, 2)
-        if isinstance(dimensions, Iterable):
-            model_name = gen_tmp_name(
-                schema=conf.get_option("temp_schema"), name="pca_plot"
-            )
-            model = PCA(model_name)
-            model.drop()
-            try:
-                model.fit(self, columns)
-                ax = model.transform(self).scatter(
-                    columns=["col1", "col2"],
-                    catcol=catcol,
-                    max_cardinality=100,
-                    max_nb_points=max_nb_points,
-                    ax=ax,
-                    **style_kwds,
-                )
-                explained_variance = model.explained_variance_["explained_variance"]
-                for idx, fun in enumerate([ax.set_xlabel, ax.set_ylabel]):
-                    if not (explained_variance[dimensions[idx] - 1]):
-                        dimension2 = ""
-                    else:
-                        x2 = round(explained_variance[dimensions[idx] - 1] * 100, 1)
-                        dimension2 = f"({x2}%)"
-                    fun(f"Dim{dimensions[idx]} {dimension2}")
-            finally:
-                model.drop()
-            return ax
         args = [
             self,
             columns,
@@ -1310,7 +1283,47 @@ class vDFPlot:
             bbox,
             img,
         ]
-        return vpy_plt.ScatterPlot().scatter(*args, ax=ax, **style_kwds,)
+        if plot_lib=='matplotlib':
+            if len(columns) > 3 and dimensions == None:
+                dimensions = (1, 2)
+            if isinstance(dimensions, Iterable):
+                model_name = gen_tmp_name(
+                    schema=conf.get_option("temp_schema"), name="pca_plot"
+                )
+                model = PCA(model_name)
+                model.drop()
+                try:
+                    model.fit(self, columns)
+                    ax = model.transform(self).scatter(
+                        columns=["col1", "col2"],
+                        catcol=catcol,
+                        max_cardinality=100,
+                        max_nb_points=max_nb_points,
+                        ax=ax,
+                        **style_kwds,
+                    )
+                    explained_variance = model.explained_variance_["explained_variance"]
+                    for idx, fun in enumerate([ax.set_xlabel, ax.set_ylabel]):
+                        if not (explained_variance[dimensions[idx] - 1]):
+                            dimension2 = ""
+                        else:
+                            x2 = round(explained_variance[dimensions[idx] - 1] * 100, 1)
+                            dimension2 = f"({x2}%)"
+                        fun(f"Dim{dimensions[idx]} {dimension2}")
+                finally:
+                    model.drop()
+                return ax
+
+            return plt.scatter(*args, ax=ax, **style_kwds,)
+        elif plot_lib=='plotly':
+            if len(columns) == 2:
+                return vpy_plotly_plty.ScatterPlot().scatter(*args, ax=ax, **style_kwds,)
+            elif len(columns) ==3:
+                return vpy_plotly_plty.ScatterPlot().scatter_3d(*args, ax=ax, **style_kwds,)
+            else:
+                raise ParameterError(
+                    "Parameter 'columns' is either more than 3 columns or less than 2."
+                )
 
     @save_verticapy_logs
     def scatter_matrix(self, columns: SQLColumns = [], **style_kwds):

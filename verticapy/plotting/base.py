@@ -288,3 +288,15 @@ class PlottingBase:
             else:
                 d[elem] = d2[elem]
         return d
+
+    @staticmethod
+    def change_column_name_style(a):
+        if isinstance(a, list):
+            for i in range(len(a)):
+                str=a[i]
+                if str.startswith('"') and str.endswith('"'):
+                    a[i]=str[1:-1]
+        else:
+            if a.startswith('"') and a.endswith('"'):
+                a=a[1:-1]
+        return a
