@@ -51,10 +51,6 @@ class ScatterPlot(PlottingBase):
         """
         Draws a scatter plot using the Plotly API.
         """
-        columns, catcol = vdf._format_colnames(columns, catcol, expected_nb_of_cols=[2, 3])
-        columns=self.change_column_name_style(columns)
-        catcol=self.change_column_name_style(catcol)
-
         n = len(columns)
         for col in columns:
             if not (vdf[col].isnum()):
@@ -97,17 +93,12 @@ class ScatterPlot(PlottingBase):
         """
         Draws a 3D scatter plot using the Plotly API.
         """
-        columns, catcol = vdf._format_colnames(columns, catcol, expected_nb_of_cols=[2, 3])
         n = len(columns)
         for col in columns:
             if not (vdf[col].isnum()):
                 raise TypeError(
                 "The parameter 'columns' must only include numerical columns."
                 )
-
-        columns=self.change_column_name_style(columns)
-        catcol=self.change_column_name_style(catcol)
-
         if vdf.shape()[0]<max_nb_points:
             data_frame=vdf.to_pandas()
         else:
@@ -116,7 +107,6 @@ class ScatterPlot(PlottingBase):
         if catcol:
             kwargs['color']=catcol
         fig=px.scatter_3d(**kwargs,**style_kwds)
-        fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
         fig.update_layout(width=800, height=700, autosize=False)
         fig.update_layout(scene=dict(
             aspectmode='manual',
