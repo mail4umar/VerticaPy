@@ -53,7 +53,8 @@ class StepwisePlot(PlotlyBase):
             "opacity": 0.4,
         }
 
-    def _create_hovertemplate(self, text):
+    @staticmethod
+    def _create_hovertemplate(text):
         hovertemplate = (
             "<b>"
             + text
