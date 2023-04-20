@@ -17,6 +17,7 @@ permissions and limitations under the License.
 from typing import Literal, Optional
 
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.graph_objs._figure import Figure
 
@@ -99,28 +100,41 @@ class StepwisePlot(PlotlyBase):
                     **self.init_other_style,
                     marker=dict(
                         size=normalized_list[i + 1]
-                        if normalized_list[i + 1] > 5
-                        else 8,
+                        if normalized_list[i + 1] > 15
+                        else 15,
                         color="green" if df["sign"][i + 1] == "+" else "red",
+                        sizemode="area",
                     ),
                     hovertemplate="<b>bic</b>: %{y:.2f}"
                     + "<br><b>No. of features</b>: %{x}<br>"
                     + f"{df['sign'][i+1]} {df['c'][i+1]} <extra></extra>",
                 )
             )
+        i = -1
+        if self.layout["direction"] == "forward":
+            condition = self.data["sign"] != "-"
+            while self.data["sign"][i] == "-":
+                i -= 1
+        else:
+            condition = self.data["sign"] != "+"
+            while self.data["sign"][i] == "+":
+                i -= 1
         fig.add_trace(
             go.Scatter(
                 name="End",
-                x=[list(df["x"])[-1]],
-                y=[list(df["y"])[-1]],
+                x=[list(df["x"])[i]],
+                y=[list(df["y"])[i]],
                 **self.init_start_style,
                 hovertemplate=self._create_hovertemplate("End"),
             )
         )
+        data = np.column_stack(
+            (self.data["x"][condition], self.data["y"][condition])
+        ).tolist()
         fig.add_trace(
             go.Scatter(
-                x=df["x"],
-                y=df["y"],
+                x=[row[0] for row in data],
+                y=[row[1] for row in data],
                 mode="lines",
                 line=dict(shape="spline", dash="dash"),
                 showlegend=False,
