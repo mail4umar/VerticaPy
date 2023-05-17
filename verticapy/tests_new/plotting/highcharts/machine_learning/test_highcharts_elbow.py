@@ -21,34 +21,26 @@ import pytest
 
 
 # Other Modules
-import numpy as np
+
+
+# Verticapy
+from verticapy.learn.model_selection import elbow
+from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_width, get_height
 
 # Testing variables
-col_name_1 = "cats"
-by_col = "binary"
-
-# Vertica
-from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
+col_name_1 = "PetalLengthCm"
+col_name_2 = "PetalWidthCm"
 
 
 @pytest.fixture(scope="class")
-def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider()
+def plot_result(iris_vd):
+    return elbow(input_relation=iris_vd, X=[col_name_1, col_name_2])
 
 
-@pytest.fixture(scope="class")
-def plot_result_2(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider(by=by_col)
-
-
-class TestVDFSpiderPlot:
+class TestMachineLearningElbowCurve:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
-
-    @pytest.fixture(autouse=True)
-    def result_2(self, plot_result_2):
-        self.by_result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
         # Arrange
@@ -56,21 +48,27 @@ class TestVDFSpiderPlot:
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
-    def test_properties_output_type_for_multiplot(
-        self, plotting_library_object, dummy_dist_vd
-    ):
+    def test_properties_xaxis_label(self):
         # Arrange
+        test_title = "Number of Clusters"
         # Act
         # Assert - checking if correct object created
-        assert isinstance(
-            self.by_result, plotting_library_object
-        ), "Wrong object created"
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
-    def test_properties_multiple_plots_produced_for_multiplot(self, dummy_dist_vd):
-        # Arrange
-        number_of_plots = 2
+    @pytest.mark.slow
+    @pytest.mark.notcritical
+    def test_additional_options_custom_height(self, iris_vd):
+        # rrange
+        custom_height = 3
+        custom_width = 3
         # Act
-        # Assert
+        result = elbow(
+            input_relation=iris_vd,
+            X=[col_name_1, col_name_2],
+            width=custom_width,
+            height=custom_height,
+        )
+        # Assert - checking if correct object created
         assert (
-            len(self.by_result.data_temp) == number_of_plots
-        ), "Two traces not produced for two classes of binary"
+            get_width(result) == custom_width and get_height(result) == custom_height
+        ), "Custom width or height not working"
