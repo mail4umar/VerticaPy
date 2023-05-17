@@ -61,7 +61,7 @@ def plot_result(titanic_vd):
     return stepwise_result.step_wise_
 
 
-class TestMachineLearningStepwisePlot:
+class TestHighchartsMachineLearningStepwisePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

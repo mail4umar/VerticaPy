@@ -36,7 +36,7 @@ def plot_result(dummy_vd):
     return dummy_vd[col_name].bar()
 
 
-class TestMatplotlibBarPlot:
+class TestHighchartsBarPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

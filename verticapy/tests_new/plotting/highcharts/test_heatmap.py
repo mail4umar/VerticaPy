@@ -43,7 +43,7 @@ def plot_result_pivot(titanic_vd):
     return titanic_vd.pivot_table([pivot_col_1, pivot_col_2])
 
 
-class TestMatplotlibHeatMap:
+class TestHighchartsHeatMap:
     @pytest.mark.skip("Error in highcharts need to be fixed")
     @pytest.fixture(autouse=False)
     def result(self, plot_result):

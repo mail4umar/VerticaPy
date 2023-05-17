@@ -53,7 +53,7 @@ def plot_result_2(titanic_vd):
     return model.plot()
 
 
-class TestMachineLearningLogisticRegressionPlot2D:
+class TestHighchartsMachineLearningLogisticRegressionPlot2D:
     @pytest.fixture(autouse=True)
     def result_2d(self, plot_result):
         self.result = plot_result
@@ -110,7 +110,7 @@ class TestMachineLearningLogisticRegressionPlot2D:
 
 
 @pytest.mark.skip(reason="Currently highchart only supports 2D plot")
-class TestMachineLearningLogisticRegressionPlot3D:
+class TestHighchartsMachineLearningLogisticRegressionPlot3D:
     @pytest.fixture(autouse=True)
     def result_3d(self, plot_result_2):
         self.result = plot_result_2

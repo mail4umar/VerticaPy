@@ -46,7 +46,7 @@ def plot_result(dummy_dist_vd):
     return model.plot(), x_col, y_col
 
 
-class TestMachineLearningRegressionTreePlot:
+class TestHighchartsMachineLearningRegressionTreePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result, self.x_col, self.y_col = plot_result

@@ -51,7 +51,7 @@ def plot_result(iris_vd):
     return model.features_importance(), model
 
 
-class TestMachineLearningImportanceBarChart:
+class TestHighchartsMachineLearningImportanceBarChartPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result[0]

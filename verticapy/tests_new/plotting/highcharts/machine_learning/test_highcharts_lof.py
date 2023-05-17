@@ -52,7 +52,7 @@ def plot_result_2(dummy_scatter_vd):
     return model.plot()
 
 
-class TestMatplotlibMachineLearningLOFPlot2D:
+class TestHighchartsMachineLearningLOFPlot2D:
     @pytest.fixture(autouse=True)
     def result_2d(self, plot_result):
         self.result = plot_result
@@ -92,7 +92,7 @@ class TestMatplotlibMachineLearningLOFPlot2D:
 
 
 @pytest.mark.skip(reason="Currently highchart only supports 2D plot")
-class TestMatplotlibMachineLearningLOFPlot3D:
+class TestHighchartsMachineLearningLOFPlot3D:
     @pytest.fixture(autouse=True)
     def result_3d(self, plot_result_2):
         self.result = plot_result_2

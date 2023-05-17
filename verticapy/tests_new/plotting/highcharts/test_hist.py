@@ -37,7 +37,7 @@ def plot_result(dummy_dist_vd):
 
 
 @pytest.mark.skip(reason="Hist not available in Highcharts currently")
-class TestMatplotlibHistogram:
+class TestHighchartsHistogram:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

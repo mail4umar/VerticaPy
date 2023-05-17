@@ -42,7 +42,7 @@ def plot_result_2D(dummy_dist_vd):
     return dummy_dist_vd.outliers_plot(columns=[col_name_1, col_name_2])
 
 
-class TestMatplotlibOutliersPlot:
+class TestHighchartsOutliersPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -90,7 +90,7 @@ class TestMatplotlibOutliersPlot:
         ), "Custom width or height not working"
 
 
-class TestMatplotlibOutliersPlot2D:
+class TestHighchartsOutliersPlot2D:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2D):
         self.result = plot_result_2D

@@ -44,7 +44,7 @@ def plot_result_2(dummy_vd):
     return dummy_vd.pie([col_name, col_name_2])
 
 
-class TestMatplotlibSimplePiePlot:
+class TestHighchartsSimplePiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -77,7 +77,7 @@ class TestMatplotlibSimplePiePlot:
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
 
-class TestMatplotlibNestedPiePlot:
+class TestHighchartsNestedPiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2

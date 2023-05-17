@@ -62,7 +62,7 @@ def plot_result_3(dummy_scatter_vd):
     return result
 
 
-class TestMatplotlibScatter2DPlot:
+class TestHighchartsScatter2DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -154,7 +154,7 @@ class TestMatplotlibScatter2DPlot:
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
 
-class TestVDFScatter3DPlot:
+class TestHighchartsScatter3DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2

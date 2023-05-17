@@ -41,7 +41,7 @@ def plot_result_multiplot(dummy_dist_vd):
     return dummy_dist_vd[col_name].density(by=by_col)
 
 
-class TestDensityPlot:
+class TestHighchartsDensityPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -93,7 +93,7 @@ class TestDensityPlot:
 
 
 @pytest.mark.skip("Error in this highchart plot")
-class TestVDFContourPlotMultiPlot:
+class TestHighchartsContourPlotMultiPlot:
     @pytest.fixture(autouse=True)
     def result_2(self, plot_result_multiplot):
         self.multi_plot_result = plot_result_multiplot

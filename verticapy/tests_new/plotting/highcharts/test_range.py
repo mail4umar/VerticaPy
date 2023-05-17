@@ -35,7 +35,7 @@ def plot_result(dummy_date_vd):
     return dummy_date_vd[col_name_1].range_plot(ts=time_col, plot_median=True)
 
 
-class TestMatplotlibRangeCurve:
+class TestHighchartsRangeCurve:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

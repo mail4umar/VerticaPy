@@ -37,7 +37,7 @@ def plot_result(iris_vd):
     return elbow(input_relation=iris_vd, X=[col_name_1, col_name_2])
 
 
-class TestMachineLearningElbowCurve:
+class TestHighchartsMachineLearningElbowCurvePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

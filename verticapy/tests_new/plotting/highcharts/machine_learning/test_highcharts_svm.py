@@ -59,7 +59,7 @@ def plot_result_3d(dummy_pred_data_vd):
     return model.plot()
 
 
-class TestMachineLearningSVMClassifierPlot:
+class TestHighchartsMachineLearningSVMClassifierPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result, plot_result_2d):
         self.result = plot_result

@@ -41,7 +41,7 @@ def plot_result_2(dummy_dist_vd):
     return dummy_dist_vd[col_name_1].boxplot(by=col_name_2)
 
 
-class TestBoxPlot:
+class TestHighchartsBoxPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -70,7 +70,7 @@ class TestBoxPlot:
         ), "X axis label incorrect"
 
 
-class TestParitionBoxPlot:
+class TestHighchartsParitionBoxPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2

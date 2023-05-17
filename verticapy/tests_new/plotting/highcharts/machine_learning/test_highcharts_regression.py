@@ -44,7 +44,7 @@ def plot_result(dummy_scatter_vd):
     return model.plot()
 
 
-class TestMachineLearningRegressionPlot:
+class TestHighchartsMachineLearningRegressionPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

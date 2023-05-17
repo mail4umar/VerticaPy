@@ -44,7 +44,7 @@ def plot_result(dummy_dist_vd):
     return model.plot()
 
 
-class TestPlotlyMachineLearningChampionChallengerPlot:
+class TestHighchartsMachineLearningChampionChallengerPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

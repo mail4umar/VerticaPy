@@ -67,7 +67,7 @@ def plot_result_lift_chart(dummy_probability_data):
     return lift_chart("y_true", "y_score", dummy_probability_data)
 
 
-class TestMachineLearningROCCurve:
+class TestHighchartsMachineLearningROCPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_roc):
         self.result = plot_result_roc
@@ -116,7 +116,7 @@ class TestMachineLearningROCCurve:
         ), "Custom width or height not working"
 
 
-class TestMachineLearningCutoffCurve:
+class TestHighchartsMachineLearningCutoffCurvePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_cutoff):
         self.result = plot_result_cutoff
@@ -159,7 +159,7 @@ class TestMachineLearningCutoffCurve:
         ), "Custom width or height not working"
 
 
-class TestMachineLearningPRCCurve:
+class TestHighchartsMachineLearningPRCPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_prc):
         self.result = plot_result_prc
@@ -202,7 +202,7 @@ class TestMachineLearningPRCCurve:
         ), "Custom width or height not working"
 
 
-class TestMachineLearningLiftChart:
+class TestHighchartsMachineLearningLiftChartPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_lift_chart):
         self.result = plot_result_lift_chart

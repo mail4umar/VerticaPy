@@ -39,7 +39,7 @@ def plot_result(dummy_dist_vd):
     return dummy_dist_vd.contour([col_name_1, col_name_2], func)
 
 
-class TestVDFContourPlot:
+class TestHighchartsContourPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
