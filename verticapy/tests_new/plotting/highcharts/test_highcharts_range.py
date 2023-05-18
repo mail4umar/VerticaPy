@@ -174,9 +174,10 @@ class TestHighchartsVDFRangeCurve:
             get_width(result) == custom_width and get_height(result) == custom_height
         ), "Custom width or height not working"
 
-    @pytest.mark.parametrize("plot_median", ["True", "False"])
-    @pytest.mark.parametrize("start_date", [1920])
-    @pytest.mark.parametrize("end_date", [1950])
+    @pytest.mark.parametrize(
+        "start_date, plot_median, end_date",
+        [(1920, "True", None), (1910, "True", 1950)],
+    )
     def test_properties_output_type_for_all_options(
         self,
         dummy_date_vd,

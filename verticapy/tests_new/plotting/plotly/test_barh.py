@@ -23,8 +23,18 @@ import pytest
 # Other Modules
 import numpy as np
 
+# Vertica
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
+
 # Testing variables
 col_name = "check 2"
+col_name_vdf_1 = "cats"
+col_name_vdf_of = "0"
 
 
 @pytest.fixture(scope="class")
@@ -32,16 +42,21 @@ def plot_result(dummy_vd):
     return dummy_vd[col_name].barh()
 
 
-class TestBarhPlot:
+@pytest.fixture(scope="class")
+def plot_result_vDF(dummy_dist_vd):
+    return dummy_dist_vd.barh(columns=[col_name_vdf_1])
+
+
+class TestMatplotlibVDCBarhPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
 
-    def test_properties_output_type_for(self, plotly_figure_object):
+    def test_properties_output_type_for(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_data_sum_equals_one(self):
         # Arrange
@@ -62,18 +77,14 @@ class TestBarhPlot:
         test_title = "density"
         # Act
         # Assert - checking x axis label
-        assert (
-            self.result.layout["xaxis"]["title"]["text"] == test_title
-        ), "X axis label incorrect"
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
         # Arrange
         test_title = col_name
         # Act
         # Assert - checking y axis label
-        assert (
-            self.result.layout["yaxis"]["title"]["text"] == test_title
-        ), "X axis label incorrect"
+        assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
 
     def test_xaxis_category(self):
         # Arrange
@@ -95,8 +106,7 @@ class TestBarhPlot:
         )
         # Assert - checking if correct object created
         assert (
-            result.layout["width"] == custom_width
-            and result.layout["height"] == custom_height
+            get_width(result) == custom_width and get_height(result) == custom_height
         ), "Custom width or height not working"
 
     def test_additional_options_custom_x_axis_title(self, dummy_vd):
@@ -104,11 +114,86 @@ class TestBarhPlot:
         # Act
         result = dummy_vd[col_name].barh(xaxis_title="Custom X Axis Title")
         # Assert
-        assert result.layout["xaxis"]["title"]["text"] == "Custom X Axis Title"
+        assert (
+            get_xaxis_label(result) == "Custom X Axis Title"
+        ), "Custom X axis title not working"
 
     def test_additional_options_custom_y_axis_title(self, dummy_vd):
         # Arrange
         # Act
         result = dummy_vd[col_name].barh(yaxis_title="Custom Y Axis Title")
         # Assert
-        assert result.layout["yaxis"]["title"]["text"] == "Custom Y Axis Title"
+        assert (
+            get_yaxis_label(result) == "Custom Y Axis Title"
+        ), "Custom Y axis title not working"
+
+
+class TestMatplotlibVDFBarhPlot:
+    @pytest.fixture(autouse=True)
+    def result(self, plot_result_vDF):
+        self.result = plot_result_vDF
+
+    def test_properties_output_type(self, plotting_library_object):
+        # Arrange
+        # Act
+        # Assert - checking if correct object created
+        assert isinstance(self.result, plotting_library_object), "wrong object crated"
+
+    def test_data_ratios(self, dummy_dist_vd):
+        ### Checking if the density was plotted correctly
+        nums = dummy_dist_vd.to_pandas()[col_name_vdf_1].value_counts()
+        total = len(dummy_dist_vd)
+        assert set(self.result.data[0]["x"]).issubset(
+            set([nums["A"] / total, nums["B"] / total, nums["C"] / total])
+        )
+
+    def test_properties_xaxis_label(self):
+        # Arrange
+        test_title = "density"
+        # Act
+        # Assert - checking x axis label
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
+
+    def test_properties_yaxis_label(self):
+        # Arrange
+        test_title = col_name_vdf_1
+        # Act
+        # Assert - checking y axis label
+        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
+
+    def test_all_categories_created(self):
+        assert set(self.result.data[0]["y"]).issubset(set(["A", "B", "C"]))
+
+    def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        # Arrange
+        custom_width = 300
+        custom_height = 400
+        # Act
+        result = dummy_dist_vd.barh(
+            columns=[col_name_vdf_1],
+            width=custom_width,
+            height=custom_height,
+        )
+        # Assert - checking if correct object created
+        assert (
+            get_width(result) == custom_width and get_height(result) == custom_height
+        ), "Custom width or height not working"
+
+    @pytest.mark.parametrize(
+        "of, method", [(col_name_vdf_of, "min"), (col_name_vdf_of, "max")]
+    )
+    def test_properties_output_type_for_all_options(
+        self,
+        dummy_dist_vd,
+        plotting_library_object,
+        of,
+        method,
+    ):
+        # Arrange
+        # Act
+        result = dummy_dist_vd[col_name_vdf_1].barh(
+            of=of,
+            method=method,
+        )
+        # Assert - checking if correct object created
+        assert isinstance(self.result, plotting_library_object), "Wrong object created"

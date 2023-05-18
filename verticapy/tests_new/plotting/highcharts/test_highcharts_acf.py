@@ -24,8 +24,12 @@ import pytest
 import numpy as np
 
 # Vertica
-from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
-
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
 
 @pytest.fixture(scope="class")
 def acf_plot_result(amazon_vd):
@@ -100,6 +104,5 @@ class TestHighchartsVDFACFPlot:
         )
         # Assert - checking if correct object created
         assert (
-            result.options["chart"].width == custom_width
-            and result.options["chart"].height == custom_height
+            get_width(result) == custom_width and get_height(result) == custom_height
         ), "Custom width or height not working"

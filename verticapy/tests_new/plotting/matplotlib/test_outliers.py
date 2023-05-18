@@ -25,7 +25,12 @@ import random
 
 
 # Vertica
-from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
 
 # Testing variables
 col_name_1 = "0"
@@ -42,12 +47,7 @@ def plot_result_2D(dummy_dist_vd):
     return dummy_dist_vd.outliers_plot(columns=[col_name_1, col_name_2])
 
 
-@pytest.fixture(scope="class")
-def plotting_library_object(matplotlib_figure_object):
-    return matplotlib_figure_object
-
-
-class TestMatplotlibOutliersPlot:
+class TestMatplotlibVDFOutliersPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -92,8 +92,7 @@ class TestMatplotlibOutliersPlot:
         )
         # Assert
         assert (
-            result.get_figure().get_size_inches()[0] == custom_width
-            and result.get_figure().get_size_inches()[1] == custom_height
+            get_width(result) == custom_width and get_height(result) == custom_height
         ), "Custom width or height not working"
 
 

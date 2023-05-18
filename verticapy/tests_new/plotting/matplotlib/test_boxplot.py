@@ -41,6 +41,11 @@ def plot_result_2(dummy_dist_vd):
     return dummy_dist_vd[col_name_1].boxplot(by=col_name_2)
 
 
+@pytest.fixture(scope="class")
+def plot_result_vDF(dummy_dist_vd):
+    return dummy_dist_vd.boxplot(columns=[col_name_1])
+
+
 class TestBoxPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
@@ -67,7 +72,7 @@ class TestBoxPlot:
         test_title = ""
         # Act
         # Assert - checking y axis label
-        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
+        assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
 
 
 class TestParitionBoxPlot:
@@ -80,3 +85,30 @@ class TestParitionBoxPlot:
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, matplotlib_figure_object), "wrong object crated"
+
+
+class TestMatplotlibVDFBoxPlot:
+    @pytest.fixture(autouse=True)
+    def result(self, plot_result):
+        self.result = plot_result
+
+    def test_properties_output_type(self, plotting_library_object):
+        # Arrange
+        # Act
+        # Assert - checking if correct object created
+        assert isinstance(self.result, plotting_library_object), "wrong object crated"
+
+    @pytest.mark.skip(reason="The plot does not have label on x-axis yet")
+    def test_properties_xaxis_title(self):
+        # Arrange
+        test_title = col_name_1
+        # Act
+        # Assert - checking x axis label
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
+
+    def test_properties_yaxis_title(self):
+        # Arrange
+        test_title = ""
+        # Act
+        # Assert - checking y axis label
+        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"

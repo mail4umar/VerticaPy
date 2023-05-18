@@ -37,5 +37,5 @@ def load_plotly():
 
 
 @pytest.fixture(scope="session")
-def plotly_figure_object():
+def plotting_library_object():
     yield plotly.graph_objs._figure.Figure

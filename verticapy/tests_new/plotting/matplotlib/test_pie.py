@@ -49,7 +49,7 @@ def plotting_library_object(matplotlib_figure_object):
     return matplotlib_figure_object
 
 
-class TestMatplotlibSimplePiePlot:
+class TestMatplotlibVDCPiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -93,7 +93,7 @@ class TestMatplotlibSimplePiePlot:
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
 
-class TestMatplotlibNestedPiePlot:
+class TestMatplotlibNestedVDFPiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2

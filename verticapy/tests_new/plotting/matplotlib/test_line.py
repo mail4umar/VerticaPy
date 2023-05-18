@@ -46,7 +46,7 @@ def plot_result_vDF(dummy_line_data_vd):
     )
 
 
-class TestMatplotlibLinePlot:
+class TestMatplotlibVDCLinePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result

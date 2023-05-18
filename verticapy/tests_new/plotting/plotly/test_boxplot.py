@@ -23,6 +23,12 @@ import pytest
 # Other Modules
 import numpy as np
 
+# Vertica
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+)
+
 # Testing variables
 col_name_1 = "0"
 col_name_2 = "binary"
@@ -38,7 +44,7 @@ def plot_result_2(dummy_dist_vd):
     return dummy_dist_vd[col_name_1].boxplot(by=col_name_2)
 
 
-class TestBoxPlot:
+class TestPlotlyVDCBoxPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -51,17 +57,17 @@ class TestBoxPlot:
 
     def test_properties_xaxis_title(self):
         # Arrange
+        test_title = col_name_1
         # Act
         # Assert
-        assert self.result.layout["xaxis"]["title"]["text"] == "0", "X-axis title issue"
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
         # Arrange
+        test_title = None
         # Act
         # Assert
-        assert (
-            self.result.layout["yaxis"]["title"]["text"] is None
-        ), "Y-axis title issue"
+        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_orientation(self):
         # Arrange

@@ -28,6 +28,8 @@ from verticapy.tests_new.plotting.conftest import (
     get_xaxis_label,
     get_yaxis_label,
     get_zaxis_label,
+    get_width,
+    get_height,
 )
 
 
@@ -67,7 +69,7 @@ def plot_result_3(dummy_scatter_vd):
     return result
 
 
-class TestMatplotlibScatter2DPlot:
+class TestMatplotlibScatterVDF2DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -132,8 +134,7 @@ class TestMatplotlibScatter2DPlot:
         # Assert - checking if correct object created
         # Assert
         assert (
-            result.get_figure().get_size_inches()[0] == custom_width
-            and result.get_figure().get_size_inches()[1] == custom_height
+            get_width(result) == custom_width and get_height(result) == custom_height
         ), "Custom width or height not working"
 
     @pytest.mark.parametrize("max_nb_points", [50, 1000])
@@ -156,7 +157,7 @@ class TestMatplotlibScatter2DPlot:
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
 
-class TestVDFScatter3DPlot:
+class TestMatplotlibVDFScatter3DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2

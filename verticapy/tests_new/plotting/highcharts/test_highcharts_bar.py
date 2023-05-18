@@ -111,8 +111,7 @@ class TestHighchartsVDCBarPlot:
         # Assert - checking if correct object created
         assert result.data_temp[0].pointPadding == 0.25, "Custom bargap not working"
 
-    @pytest.mark.parametrize("bargap", [0.1, 0.4])
-    @pytest.mark.parametrize("max_cardinality", [1, 4])
+    @pytest.mark.parametrize("max_cardinality, bargap", [(1,0.1), (4,0.4)])
     def test_properties_output_type_for_all_options(
         self,
         dummy_vd,

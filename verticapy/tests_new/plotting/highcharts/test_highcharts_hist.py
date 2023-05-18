@@ -48,7 +48,7 @@ def plot_result_vDF(dummy_dist_vd):
 
 
 @pytest.mark.skip(reason="Hist not available in Highcharts currently")
-class TestHighchartsVDCHistogram:
+class TestHighchartsVDCHistogramPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -102,7 +102,7 @@ class TestHighchartsVDCHistogram:
 
 
 @pytest.mark.skip(reason="Hist not available in Highcharts currently")
-class TestHighchartsVDFHistogram:
+class TestHighchartsVDFHistogramPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_vDF):
         self.result = plot_result_vDF

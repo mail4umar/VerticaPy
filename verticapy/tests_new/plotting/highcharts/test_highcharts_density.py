@@ -102,7 +102,7 @@ class TestHighchartsVDCDensityPlot:
 
 
 @pytest.mark.skip("Error in this highchart plot")
-class TestHighchartsContourPlotMultiPlot:
+class TestHighchartsDensityMultiPlot:
     @pytest.fixture(autouse=True)
     def result_2(self, plot_result_multiplot):
         self.multi_plot_result = plot_result_multiplot

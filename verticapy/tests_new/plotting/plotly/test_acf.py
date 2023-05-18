@@ -17,6 +17,20 @@ permissions and limitations under the License.
 # Pytest
 import pytest
 
+# Standard Python Modules
+
+
+# Other Modules
+import numpy as np
+
+# Vertica
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
+
 
 @pytest.fixture(scope="class")
 def acf_plot_result(amazon_vd):
@@ -30,25 +44,23 @@ def acf_plot_result(amazon_vd):
     )
 
 
-class TestACFPlot:
+class TestPlotlyVDFACFPlot:
     @pytest.fixture(autouse=True)
     def result(self, acf_plot_result):
         self.result = acf_plot_result
 
-    def test_properties_output_type_for(self, plotly_figure_object):
+    def test_properties_output_type_for(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_label(self):
         # Arrange
         test_title = "Lag"
         # Act
         # Assert - checking x axis label
-        assert (
-            self.result.layout["xaxis"]["title"]["text"] == test_title
-        ), "X axis label incorrect"
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_scatter_points_and_confidence(self):
         # Arrange
@@ -118,6 +130,5 @@ class TestACFPlot:
         )
         # Assert - checking if correct object created
         assert (
-            result.layout["width"] == custom_width
-            and result.layout["height"] == custom_height
+            get_width(result) == custom_width and get_height(result) == custom_height
         ), "Custom width or height not working"
