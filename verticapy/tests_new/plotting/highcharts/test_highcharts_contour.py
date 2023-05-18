@@ -33,15 +33,13 @@ col_name_2 = "binary"
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].boxplot()
+    def func(a, b):
+        return b
+
+    return dummy_dist_vd.contour([col_name_1, col_name_2], func)
 
 
-@pytest.fixture(scope="class")
-def plot_result_2(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].boxplot(by=col_name_2)
-
-
-class TestHighchartsBoxPlot:
+class TestHighchartsVDFContourPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -50,9 +48,8 @@ class TestHighchartsBoxPlot:
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "wrong object crated"
+        assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
-    @pytest.mark.skip(reason="The plot does not have label on x-axis yet")
     def test_properties_xaxis_title(self):
         # Arrange
         test_title = col_name_1
@@ -62,21 +59,38 @@ class TestHighchartsBoxPlot:
 
     def test_properties_yaxis_title(self):
         # Arrange
-        test_title = "0"
+        test_title = col_name_2
         # Act
         # Assert - checking y axis label
-        assert (
-            self.result.options["xAxis"].categories[0] == test_title
-        ), "X axis label incorrect"
+        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
-
-class TestHighchartsParitionBoxPlot:
-    @pytest.fixture(autouse=True)
-    def result(self, plot_result_2):
-        self.result = plot_result_2
-
-    def test_properties_output_type(self, plotting_library_object):
+    def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
         # Arrange
+        custom_width = 700
+        custom_height = 700
+
+        def func(a, b):
+            return b
+
         # Act
+        result = dummy_dist_vd.contour(
+            [col_name_1, col_name_2], func, width=custom_width, height=custom_height
+        )
+        # Assert
+        assert (
+            result.options["chart"].width == custom_width
+            and result.options["chart"].height == custom_height
+        ), "Custom width or height not working"
+
+    @pytest.mark.parametrize("nbins", [10, 20])
+    def test_properties_output_type_for_all_options(
+        self, dummy_dist_vd, plotting_library_object, nbins
+    ):
+        # Arrange
+        def func(a, b):
+            return b
+
+        # Act
+        result = dummy_dist_vd.contour([col_name_1, col_name_2], func, nbins=nbins)
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "wrong object crated"
+        assert isinstance(self.result, plotting_library_object), "Wrong object created"

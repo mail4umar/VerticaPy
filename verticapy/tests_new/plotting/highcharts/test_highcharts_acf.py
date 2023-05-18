@@ -39,7 +39,7 @@ def acf_plot_result(amazon_vd):
     )
 
 
-class TestHighchartsACFPlot:
+class TestHighchartsVDFACFPlot:
     @pytest.fixture(autouse=True)
     def result(self, acf_plot_result):
         self.result = acf_plot_result

@@ -62,7 +62,7 @@ def plot_result_3(dummy_scatter_vd):
     return result
 
 
-class TestHighchartsScatter2DPlot:
+class TestHighchartsScatterVDF2DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -134,12 +134,14 @@ class TestHighchartsScatter2DPlot:
             and result.options["chart"].height == custom_height
         ), "Custom width or height not working"
 
-    @pytest.mark.parametrize("max_nb_points", [50, 1000])
-    @pytest.mark.parametrize("max_cardinality", [2, 4])
+    @pytest.mark.parametrize(
+        "size, max_nb_points, max_cardinality", [(col_name_3, 50, 2), (None, 1000, 4)]
+    )
     def test_properties_output_type_for_all_options(
         self,
         dummy_scatter_vd,
         plotting_library_object,
+        size,
         max_nb_points,
         max_cardinality,
     ):
@@ -147,6 +149,7 @@ class TestHighchartsScatter2DPlot:
         # Act
         result = dummy_scatter_vd.scatter(
             [col_name_1, col_name_2],
+            size=size,
             max_nb_points=max_nb_points,
             max_cardinality=max_cardinality,
         )
@@ -154,7 +157,7 @@ class TestHighchartsScatter2DPlot:
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
 
-class TestHighchartsScatter3DPlot:
+class TestHighchartsScatterVDF3DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2

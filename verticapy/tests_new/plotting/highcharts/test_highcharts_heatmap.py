@@ -24,7 +24,12 @@ import pytest
 import numpy as np
 
 # Vertica
-from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
 
 # Testing variables
 col_name_1 = "PetalLengthCm"
@@ -43,7 +48,7 @@ def plot_result_pivot(titanic_vd):
     return titanic_vd.pivot_table([pivot_col_1, pivot_col_2])
 
 
-class TestHighchartsHeatMap:
+class TestHighchartsVDFHeatMap:
     @pytest.mark.skip("Error in highcharts need to be fixed")
     @pytest.fixture(autouse=False)
     def result(self, plot_result):
@@ -121,8 +126,7 @@ class TestHighchartsHeatMap:
         )
         # Assert
         assert (
-            result.options["chart"].width == custom_width
-            and result.options["chart"].height == custom_height
+            get_width(result) == custom_width and get_height(result) == custom_height
         ), "Custom width or height not working"
 
     @pytest.mark.skip("Error in highcharts need to be fixed")

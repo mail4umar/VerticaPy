@@ -44,7 +44,7 @@ def plot_result(dummy_line_data_vd):
     return dummy_line_data_vd[col_name_1].candlestick(ts=time_col)
 
 
-class TestHighChartsCandlestick:
+class TestHighChartsVDCCandlestick:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
