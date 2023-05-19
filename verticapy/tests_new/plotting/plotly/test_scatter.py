@@ -54,16 +54,16 @@ def plot_result_3(dummy_scatter_vd):
     return result
 
 
-class TestVDFScatter2DPlot:
+class TestPlotlyVDFScatter2DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_title(
         self,
@@ -165,16 +165,16 @@ class TestVDFScatter2DPlot:
         ), "Custom width or height not working"
 
 
-class TestVDFScatter3DPlot:
+class TestPlotlyVDFScatter3DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_title_3D_plot(
         self,

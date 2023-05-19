@@ -46,11 +46,11 @@ class TestMachineLearningLiftChart:
     def result(self, plot_result):
         self.result = plot_result
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_xaxis_label(self):
         # Arrange

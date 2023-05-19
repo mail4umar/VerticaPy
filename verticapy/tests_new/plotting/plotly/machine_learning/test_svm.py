@@ -65,23 +65,23 @@ class TestMachineLearningSVMClassifierPlot:
         self.result_2d = plot_result_2d
         self.result_3d = plot_result_3d
 
-    def test_properties_output_type_for_1d(self, plotly_figure_object):
+    def test_properties_output_type_for_1d(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result) == plotting_library_object, "Wrong object crated"
 
-    def test_properties_output_typefor_2d(self, plotly_figure_object):
+    def test_properties_output_typefor_2d(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result_2d) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result_2d) == plotting_library_object, "Wrong object crated"
 
-    def test_properties_output_type_for_3d(self, plotly_figure_object):
+    def test_properties_output_type_for_3d(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result_3d) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result_3d) == plotting_library_object, "Wrong object crated"
 
     def test_properties_yaxis_label(self):
         # Arrange

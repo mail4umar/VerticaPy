@@ -38,7 +38,7 @@ def plot_result_2(dummy_dist_vd):
     return dummy_dist_vd[col_name_1].spider(by=by_col)
 
 
-class TestVDFSpiderPlot:
+class TestPlotlyVDFSpiderPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -47,19 +47,19 @@ class TestVDFSpiderPlot:
     def result_2(self, plot_result_2):
         self.by_result = plot_result_2
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object created"
+        assert type(self.result) == plotting_library_object, "wrong object created"
 
     def test_properties_output_type_for_multiplot(
-        self, plotly_figure_object, dummy_dist_vd
+        self, plotting_library_object, dummy_dist_vd
     ):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.by_result) == plotly_figure_object, "wrong object created"
+        assert type(self.by_result) == plotting_library_object, "wrong object created"
 
     def test_properties_title(self, load_plotly, dummy_dist_vd):
         # Arrange

@@ -44,16 +44,21 @@ def plot_result_2(dummy_dist_vd):
     return dummy_dist_vd[col_name_1].boxplot(by=col_name_2)
 
 
+@pytest.fixture(scope="class")
+def plot_result_vDF(dummy_dist_vd):
+    return dummy_dist_vd.boxplot(columns=[col_name_1])
+
+
 class TestPlotlyVDCBoxPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_title(self):
         # Arrange
@@ -148,7 +153,7 @@ class TestPlotlyVDCBoxPlot:
         ), "Maximum value not in plot"
 
 
-class TestParitionBoxPlot:
+class TestPlotlyParitionBoxPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2
@@ -205,3 +210,23 @@ class TestParitionBoxPlot:
         assert self.result.data[1]["median"][0] == pytest.approx(
             50, 1
         ), "Median not computed correctly for binary=1"
+
+
+class TestPlotlyVDFBoxPlot:
+    @pytest.fixture(autouse=True)
+    def result(self, plot_result):
+        self.result = plot_result
+
+    def test_properties_output_type(self, plotting_library_object):
+        # Arrange
+        # Act
+        # Assert - checking if correct object created
+        assert isinstance(self.result, plotting_library_object), "wrong object crated"
+
+    @pytest.mark.skip(reason="The plot does not have label on x-axis yet")
+    def test_properties_xaxis_title(self):
+        # Arrange
+        test_title = col_name_1
+        # Act
+        # Assert - checking x axis label
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"

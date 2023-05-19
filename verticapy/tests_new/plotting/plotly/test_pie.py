@@ -41,16 +41,16 @@ def plot_result_2(dummy_vd):
     return dummy_vd.pie([col_name, col_name_2])
 
 
-class TestSimplePiePlot:
+class TestPlotlyVDFPiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
 
-    def test_properties_output_type_for(self, plotly_figure_object):
+    def test_properties_output_type_for(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_data_0_values(self, dummy_vd):
         # Arrange
@@ -101,16 +101,16 @@ class TestSimplePiePlot:
         assert len(result.data[0]["pull"]) > 0
 
 
-class TestNestedPiePlot:
+class TestPLotlyNestedPiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
         self.result = plot_result_2
 
-    def test_properties_type(self, plotly_figure_object):
+    def test_properties_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object
+        assert type(self.result) == plotting_library_object
 
     def test_properties_branch_values(self):
         # Arrange

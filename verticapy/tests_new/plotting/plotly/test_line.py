@@ -20,6 +20,13 @@ import random
 
 # Standard Python Modules
 
+# Vertica
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
 
 # Other Modules
 import numpy as np
@@ -43,7 +50,7 @@ def plot_result_vDF(dummy_line_data_vd):
     )
 
 
-class TestVDFLinePlot:
+class TestPlotlyLinePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -52,22 +59,22 @@ class TestVDFLinePlot:
     def result_2(self, plot_result):
         self.vdf_result = plot_result
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object created"
+        assert type(self.result) == plotting_library_object, "wrong object created"
 
-    def test_properties_output_type_for_vDataFrame(self, plotly_figure_object):
+    def test_properties_output_type_for_vDataFrame(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert (
-            type(self.vdf_result) == plotly_figure_object
+            type(self.vdf_result) == plotting_library_object
         ), "wrong object created for vDataFrame"
 
     def test_properties_output_type_for_one_trace(
-        self, dummy_line_data_vd, plotly_figure_object
+        self, dummy_line_data_vd, plotting_library_object
     ):
         # Arrange
         # Act
@@ -75,7 +82,7 @@ class TestVDFLinePlot:
             col_name_1
         ].plot(ts=time_col)
         # Assert - checking if correct object created
-        assert type(result) == plotly_figure_object, "wrong object created"
+        assert type(result) == plotting_library_object, "wrong object created"
 
     def test_properties_x_axis_title(
         self,
@@ -84,9 +91,7 @@ class TestVDFLinePlot:
         test_tile = "time"
         # Act
         # Assert - checking if correct object created
-        assert (
-            self.result.layout["xaxis"]["title"]["text"] == test_tile
-        ), "X axis title incorrect"
+        assert get_xaxis_label(self.result) == test_tile, "X axis title incorrect"
 
     def test_properties_y_axis_title(
         self,
@@ -95,9 +100,7 @@ class TestVDFLinePlot:
         test_tile = col_name_1
         # Act
         # Assert - checking if correct object created
-        assert (
-            self.result.layout["yaxis"]["title"]["text"] == col_name_1
-        ), "Y axis title incorrect"
+        assert get_yaxis_label(self.result) == test_tile, "Y axis title incorrect"
 
     def test_data_count_of_all_values(self, dummy_line_data_vd):
         # Arrange
@@ -130,9 +133,8 @@ class TestVDFLinePlot:
         )
         # Assert - checking if correct object created
         assert (
-            result.layout["width"] == custom_width
-            and result.layout["height"] == custom_height
-        ), "Custom width not working"
+            get_width(result) == custom_width and get_height(result) == custom_height
+        ), "Custom width or height not working"
 
     def test_additional_options_marker_on(self, dummy_line_data_vd):
         # Arrange

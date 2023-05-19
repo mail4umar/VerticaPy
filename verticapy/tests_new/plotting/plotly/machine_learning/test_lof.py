@@ -55,17 +55,17 @@ class TestMachineLearningLOFPlot:
     def result_3d(self, plot_result_2):
         self.result_3d = plot_result_2
 
-    def test_properties_output_type_for_2d(self, plotly_figure_object):
+    def test_properties_output_type_for_2d(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
-    def test_properties_output_type_for_3d(self, plotly_figure_object):
+    def test_properties_output_type_for_3d(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result_3d) == plotly_figure_object, "wrong object crated"
+        assert type(self.result_3d) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_label(self):
         # Arrange

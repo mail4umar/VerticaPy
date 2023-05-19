@@ -65,11 +65,11 @@ class TestMachineLearningROCCurve:
     def result(self, plot_result_roc):
         self.result = plot_result_roc
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_title(self):
         # Arrange
@@ -126,11 +126,11 @@ class TestMachineLearningCutoffCurve:
     def result(self, plot_result_cutoff):
         self.result = plot_result_cutoff
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_xaxis_label(self):
         # Arrange
@@ -180,11 +180,11 @@ class TestMachineLearningPRCCurve:
     def result(self, plot_result_prc):
         self.result = plot_result_prc
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_xaxis_label(self):
         # Arrange
@@ -235,11 +235,11 @@ class TestMachineLearningLiftChart:
     def result(self, plot_result_lift_chart):
         self.result = plot_result_lift_chart
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "Wrong object crated"
+        assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_title(self):
         # Arrange

@@ -20,6 +20,13 @@ import random
 
 # Standard Python Modules
 
+# Vertica
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
 
 # Other Modules
 import numpy as np
@@ -39,7 +46,7 @@ def plot_result_2D(dummy_dist_vd):
     return dummy_dist_vd.outliers_plot(columns=[col_name_1, col_name_2])
 
 
-class TestVDFOutliersPlot:
+class TestPlotlyVDFOutliersPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
@@ -48,17 +55,17 @@ class TestVDFOutliersPlot:
     def result_2(self, plot_result_2D):
         self._2d_result = plot_result_2D
 
-    def test_properties_output_type_for_1d(self, plotly_figure_object):
+    def test_properties_output_type_for_1d(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
-    def test_properties_output_type_for_2d(self, plotly_figure_object):
+    def test_properties_output_type_for_2d(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self._2d_result) == plotly_figure_object, "wrong object crated"
+        assert type(self._2d_result) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_for_1d(
         self,
@@ -73,23 +80,19 @@ class TestVDFOutliersPlot:
         self,
     ):
         # Arrange
-        column_name = col_name_1
+        test_title = col_name_1
         # Act
         # Assert -
-        assert (
-            self._2d_result.layout["xaxis"]["title"]["text"] == column_name
-        ), "X axis label incorrect"
+        assert get_xaxis_label(self._2d_result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_for_2d(
         self,
     ):
         # Arrange
-        column_name = col_name_2
+        test_title = col_name_2
         # Act
         # Assert -
-        assert (
-            self._2d_result.layout["yaxis"]["title"]["text"] == column_name
-        ), "X axis label incorrect"
+        assert get_yaxis_label(self._2d_result) == test_title, "X axis label incorrect"
 
     def test_data_all_scatter_points_for_1d(
         self,
@@ -138,4 +141,6 @@ class TestVDFOutliersPlot:
             columns=[col_name_1, col_name_2], width=custom_width, height=custom_height
         )
         # Assert
-        assert result.layout["width"] == custom_width, "Custom width not working"
+        assert (
+            get_width(result) == custom_width and get_height(result) == custom_height
+        ), "Custom width or height not working"

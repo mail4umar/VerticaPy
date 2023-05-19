@@ -23,8 +23,17 @@ import pytest
 # Other Modules
 import numpy as np
 
+# Vertica
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
+
 # Testing variables
-col_name = "check 2"
+col_name_1 = "0"
+col_name_2 = "binary"
 
 
 @pytest.fixture(scope="class")
@@ -32,40 +41,37 @@ def plot_result(dummy_dist_vd):
     def func(a, b):
         return b
 
-    return dummy_dist_vd.contour(["0", "binary"], func)
+    return dummy_dist_vd.contour([col_name_1, col_name_2], func)
 
 
-class TestVDFContourPlot:
+class TestPlotlyVDFContourPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
         self.result = plot_result
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "Wrong object created"
+        assert type(self.result) == plotting_library_object, "Wrong object created"
 
     def test_properties_x_axis_title(
         self,
     ):
         # Arrange
-        # Arrange
+        test_title = col_name_1
         # Act
         # Assert
-        assert (
-            self.result.layout["xaxis"]["title"]["text"] == "0"
-        ), "X axis title incorrect"
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_y_axis_title(
         self,
     ):
         # Arrange
+        test_title = col_name_2
         # Act
         # Assert
-        assert (
-            self.result.layout["yaxis"]["title"]["text"] == "binary"
-        ), "Y axis title incorrect"
+        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_data_count_xaxis_default_bins(
         self,
@@ -84,7 +90,7 @@ class TestVDFContourPlot:
 
         # Act
         result = dummy_dist_vd.contour(
-            columns=["0", "binary"], nbins=custom_bins, func=func
+            columns=[col_name_1, col_name_2], nbins=custom_bins, func=func
         )
         # Assert
         assert (
@@ -93,8 +99,8 @@ class TestVDFContourPlot:
 
     def test_data_x_axis_range(self, dummy_dist_vd):
         # Arrange
-        x_min = dummy_dist_vd["0"].min()
-        x_max = dummy_dist_vd["0"].max()
+        x_min = dummy_dist_vd[col_name_1].min()
+        x_max = dummy_dist_vd[col_name_1].max()
         custom_bins = 1000
         # Act
         # Assert
@@ -115,10 +121,9 @@ class TestVDFContourPlot:
 
         # Act
         result = dummy_dist_vd.contour(
-            ["0", "binary"], func, width=custom_width, height=custom_height
+            [col_name_1, col_name_2], func, width=custom_width, height=custom_height
         )
         # Assert
         assert (
-            result.layout["width"] == custom_width
-            and result.layout["height"] == custom_height
-        ), "Custom width not working"
+            get_width(result) == custom_width and get_height(result) == custom_height
+        ), "Custom width or height not working"

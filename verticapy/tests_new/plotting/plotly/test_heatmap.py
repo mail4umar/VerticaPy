@@ -23,6 +23,14 @@ import pytest
 # Other Modules
 import numpy as np
 
+# Vertica
+from verticapy.tests_new.plotting.conftest import (
+    get_xaxis_label,
+    get_yaxis_label,
+    get_width,
+    get_height,
+)
+
 # Testing variables
 col_name_1 = "PetalLengthCm"
 col_name_2 = "SepalLengthCm"
@@ -49,50 +57,48 @@ class TestVDFHeatMap:
     def result_2(self, plot_result_pivot):
         self.pivot_result = plot_result_pivot
 
-    def test_properties_output_type(self, plotly_figure_object):
+    def test_properties_output_type(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert type(self.result) == plotly_figure_object, "wrong object crated"
+        assert type(self.result) == plotting_library_object, "wrong object crated"
 
-    def test_properties_output_type_for_pivot_table(self, plotly_figure_object):
+    def test_properties_output_type_for_pivot_table(self, plotting_library_object):
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert (
-            type(self.pivot_result) == plotly_figure_object
+            type(self.pivot_result) == plotting_library_object
         ), "wrong object crated for pivot table"
 
     def test_properties_output_type_for_corr(
-        self, dummy_scatter_vd, plotly_figure_object
+        self, dummy_scatter_vd, plotting_library_object
     ):
         # Arrange
         # Act
         result = dummy_scatter_vd.corr(method="spearman")
         # Assert - checking if correct object created
         assert (
-            type(result) == plotly_figure_object
+            type(result) == plotting_library_object
         ), "wrong object crated for corr() plot"
 
     def test_properties_xaxis_title(
         self,
     ):
         # Arrange
+        test_title = col_name_1
         # Act
         # Assert
-        assert (
-            self.result.layout["xaxis"]["title"]["text"] == col_name_1
-        ), "X-axis title issue"
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(
         self,
     ):
         # Arrange
+        test_title = col_name_2
         # Act
         # Assert
-        assert (
-            self.result.layout["yaxis"]["title"]["text"] == col_name_2
-        ), "Y-axis title issue"
+        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     # ToDo Remove double quotes after the labels are fixed
     def test_properties_yaxis_labels_for_categorical_data(self, titanic_vd):
@@ -163,6 +169,5 @@ class TestVDFHeatMap:
         )
         # Assert
         assert (
-            result.layout["width"] == custom_width
-            and result.layout["height"] == custom_height
-        )
+            get_width(result) == custom_width and get_height(result) == custom_height
+        ), "Custom width or height not working"
