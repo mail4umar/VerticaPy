@@ -19,18 +19,20 @@ import pytest
 
 # Standard Python Modules
 
+# VerticaPy
+import verticapy._config.config as conf
 
 # Other Modules
 import plotly
-
-# VerticaPy
-import verticapy._config.config as conf
 
 DUMMY_TEST_SIZE = 100
 
 
 @pytest.fixture(scope="session", autouse=True)
 def load_plotly():
+    """
+    Set plotly as the default plotting lirbary 
+    """
     conf.set_option("plotting_lib", "plotly")
     yield
     conf.set_option("plotting_lib", "matplotlib")
@@ -38,4 +40,7 @@ def load_plotly():
 
 @pytest.fixture(scope="session")
 def plotting_library_object():
-    yield plotly.graph_objs._figure.Figure
+    """
+    Set plotly figure object as the the default plotting library object
+    """
+    yield plotly.graph_objs.Figure
