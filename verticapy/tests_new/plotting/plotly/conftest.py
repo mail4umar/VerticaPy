@@ -31,7 +31,7 @@ DUMMY_TEST_SIZE = 100
 @pytest.fixture(scope="session", autouse=True)
 def load_plotly():
     """
-    Set plotly as the default plotting lirbary 
+    Set plotly as the default plotting lirbary
     """
     conf.set_option("plotting_lib", "plotly")
     yield

@@ -32,17 +32,20 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name = "check 2"
+COL_NAME = "check 2"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_vd):
-    return dummy_vd[col_name].bar()
+    return dummy_vd[COL_NAME].bar()
 
 
 class TestBarPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type_for(self, plotting_library_object):
@@ -53,20 +56,26 @@ class TestBarPlot:
 
     def test_data_ratios(self, dummy_vd):
         ### Checking if the density was plotted correctly
-        nums = dummy_vd.to_pandas()[col_name].value_counts()
+        nums = dummy_vd.to_pandas()[COL_NAME].value_counts()
         total = len(dummy_vd)
         assert set(self.result.data[0]["y"]).issubset(
             set([nums["A"] / total, nums["B"] / total, nums["C"] / total])
         )
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name
+        test_title = COL_NAME
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -80,11 +89,14 @@ class TestBarPlot:
         assert self.result.layout["xaxis"]["type"] == "category"
 
     def test_additional_options_custom_width_and_height(self, dummy_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 300
         custom_height = 400
         # Act
-        result = dummy_vd[col_name].bar(
+        result = dummy_vd[COL_NAME].bar(
             width=custom_width,
             height=custom_height,
         )
@@ -96,13 +108,13 @@ class TestBarPlot:
     def test_additional_options_custom_x_axis_title(self, dummy_vd):
         # Arrange
         # Act
-        result = dummy_vd[col_name].bar(xaxis_title="Custom X Axis Title")
+        result = dummy_vd[COL_NAME].bar(xaxis_title="Custom X Axis Title")
         # Assert
         assert result.layout["xaxis"]["title"]["text"] == "Custom X Axis Title"
 
     def test_additional_options_custom_y_axis_title(self, dummy_vd):
         # Arrange
         # Act
-        result = dummy_vd[col_name].bar(yaxis_title="Custom Y Axis Title")
+        result = dummy_vd[COL_NAME].bar(yaxis_title="Custom Y Axis Title")
         # Assert
         assert result.layout["yaxis"]["title"]["text"] == "Custom Y Axis Title"

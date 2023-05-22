@@ -27,20 +27,23 @@ import pytest
 from verticapy.learn.linear_model import LinearRegression
 
 # Testing variables
-col_name_1 = "X"
-col_name_2 = "Y"
+COL_NAME_1 = "X"
+COL_NAME_2 = "Y"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_scatter_vd):
     model = LinearRegression("LR_churn")
-    model.fit(dummy_scatter_vd, [col_name_1], col_name_2)
+    model.fit(dummy_scatter_vd, [COL_NAME_1], COL_NAME_2)
     return model.plot()
 
 
 class TestMachineLearningRegressionPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type_for(self, plotting_library_object):
@@ -50,8 +53,11 @@ class TestMachineLearningRegressionPlot:
         assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert (
@@ -59,8 +65,11 @@ class TestMachineLearningRegressionPlot:
         ), "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert (

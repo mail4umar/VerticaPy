@@ -24,32 +24,32 @@ import pytest
 import numpy as np
 
 # Testing variables
-col_name_1 = "X"
-col_name_2 = "Y"
-col_name_3 = "Z"
-col_name_4 = "Category"
+COL_NAME_1 = "X"
+COL_NAME_2 = "Y"
+COL_NAME_3 = "Z"
+COL_NAME_4 = "Category"
 all_categories = ["A", "B", "C"]
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_scatter_vd):
-    return dummy_scatter_vd.scatter([col_name_1, col_name_2])
+    return dummy_scatter_vd.scatter([COL_NAME_1, COL_NAME_2])
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(dummy_scatter_vd):
-    return dummy_scatter_vd.scatter([col_name_1, col_name_2, col_name_3])
+    return dummy_scatter_vd.scatter([COL_NAME_1, COL_NAME_2, COL_NAME_3])
 
 
 @pytest.fixture(scope="class")
 def plot_result_3(dummy_scatter_vd):
     result = dummy_scatter_vd.scatter(
         [
-            col_name_1,
-            col_name_2,
-            col_name_3,
+            COL_NAME_1,
+            COL_NAME_2,
+            COL_NAME_3,
         ],
-        by=col_name_4,
+        by=COL_NAME_4,
     )
     return result
 
@@ -57,9 +57,15 @@ def plot_result_3(dummy_scatter_vd):
 class TestPlotlyVDFScatter2DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -72,7 +78,7 @@ class TestPlotlyVDFScatter2DPlot:
         # Act
         # Assert
         assert (
-            self.result.layout["xaxis"]["title"]["text"] == col_name_1
+            self.result.layout["xaxis"]["title"]["text"] == COL_NAME_1
         ), "X-axis title issue"
 
     def test_properties_yaxis_title(
@@ -82,7 +88,7 @@ class TestPlotlyVDFScatter2DPlot:
         # Act
         # Assert
         assert (
-            self.result.layout["yaxis"]["title"]["text"] == col_name_2
+            self.result.layout["yaxis"]["title"]["text"] == COL_NAME_2
         ), "Y-axis title issue"
 
     def test_properties_all_unique_values_for_by(self, dummy_scatter_vd):
@@ -90,10 +96,10 @@ class TestPlotlyVDFScatter2DPlot:
         # Act
         result = dummy_scatter_vd.scatter(
             [
-                col_name_2,
-                col_name_3,
+                COL_NAME_2,
+                COL_NAME_3,
             ],
-            by=col_name_4,
+            by=COL_NAME_4,
         )
         # Assert
         assert set(
@@ -105,10 +111,10 @@ class TestPlotlyVDFScatter2DPlot:
         # Act
         result = dummy_scatter_vd.scatter(
             [
-                col_name_2,
-                col_name_3,
+                COL_NAME_2,
+                COL_NAME_3,
             ],
-            by=col_name_4,
+            by=COL_NAME_4,
         )
         assert (
             len(
@@ -141,20 +147,23 @@ class TestPlotlyVDFScatter2DPlot:
         len_of_data = len(
             dummy_scatter_vd.search(
                 conditions=[
-                    f"{col_name_1} ={self.result.data[0]['x'][0]} and {col_name_2}={self.result.data[0]['y'][0]}"
+                    f"{COL_NAME_1} ={self.result.data[0]['x'][0]} and {COL_NAME_2}={self.result.data[0]['y'][0]}"
                 ],
-                usecols=[col_name_1, col_name_2],
+                usecols=[COL_NAME_1, COL_NAME_2],
             )
         )
         assert len_of_data > 0, "A wrong point was plotted"
 
     def test_additional_options_custom_width_and_height(self, dummy_scatter_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 300
         custom_height = 400
         # Act
         result = dummy_scatter_vd.scatter(
-            [col_name_1, col_name_2],
+            [COL_NAME_1, COL_NAME_2],
             width=custom_width,
             height=custom_height,
         )
@@ -168,9 +177,15 @@ class TestPlotlyVDFScatter2DPlot:
 class TestPlotlyVDFScatter3DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
+        """
+        Get the plot results
+        """
         self.result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -183,7 +198,7 @@ class TestPlotlyVDFScatter3DPlot:
         # Act
         # Assert
         assert (
-            self.result.layout["scene"]["xaxis"]["title"]["text"] == col_name_1
+            self.result.layout["scene"]["xaxis"]["title"]["text"] == COL_NAME_1
         ), "X-axis title issue in 3D plot"
 
     def test_properties_yaxis_title_3D_plot(
@@ -193,7 +208,7 @@ class TestPlotlyVDFScatter3DPlot:
         # Act
         # Assert
         assert (
-            self.result.layout["scene"]["yaxis"]["title"]["text"] == col_name_2
+            self.result.layout["scene"]["yaxis"]["title"]["text"] == COL_NAME_2
         ), "Y-axis title issue in 3D plot"
 
     def test_properties_zaxis_title_3D_plot(
@@ -203,7 +218,7 @@ class TestPlotlyVDFScatter3DPlot:
         # Act
         # Assert
         assert (
-            self.result.layout["scene"]["zaxis"]["title"]["text"] == col_name_3
+            self.result.layout["scene"]["zaxis"]["title"]["text"] == COL_NAME_3
         ), "Z-axis title issue in 3D plot"
 
     def test_properties_all_unique_values_for_by_3D_plot(self, plot_result_3):

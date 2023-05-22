@@ -67,7 +67,7 @@ class TestHighchartsVDFACFPlot:
 
     def test_properties_xaxis_label(self):
         """
-        Test if correct x-axis label
+        Testing x-axis label
         """
         # Arrange
         test_title = "lag"

@@ -32,9 +32,9 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "0"
-col_name_2 = "1"
-by_col = "binary"
+COL_NAME_1 = "0"
+COL_NAME_2 = "1"
+BY_COL = "binary"
 pos_label = "0"
 
 
@@ -42,7 +42,7 @@ pos_label = "0"
 def plot_result_roc(dummy_dist_vd):
     model = RandomForestClassifier("roc_plot_test")
     model.drop()
-    model.fit(dummy_dist_vd, [col_name_1, col_name_2], by_col)
+    model.fit(dummy_dist_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
     return model.roc_curve()
 
 
@@ -50,7 +50,7 @@ def plot_result_roc(dummy_dist_vd):
 def plot_result_cutoff(dummy_dist_vd):
     model = RandomForestClassifier("roc_plot_test_2")
     model.drop()
-    model.fit(dummy_dist_vd, [col_name_1, col_name_2], by_col)
+    model.fit(dummy_dist_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
     return model.cutoff_curve(pos_label=pos_label)
 
 
@@ -67,9 +67,15 @@ def plot_result_lift_chart(dummy_probability_data):
 class TestMachineLearningROCCurve:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_roc):
+        """
+        Get the plot results
+        """
         self.result = plot_result_roc
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -83,6 +89,9 @@ class TestMachineLearningROCCurve:
         assert self.result.get_title() == test_title, "Plot Title Incorrect"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = "False Positive Rate (1-Specificity)"
         # Act
@@ -90,6 +99,9 @@ class TestMachineLearningROCCurve:
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "True Positive Rate (Sensitivity)"
         # Act
@@ -103,7 +115,7 @@ class TestMachineLearningROCCurve:
         # Act
         model = RandomForestClassifier("roc_plot_test")
         model.drop()
-        model.fit(dummy_dist_vd, [col_name_1, col_name_2], by_col)
+        model.fit(dummy_dist_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
         result = model.cutoff_curve(
             pos_label=pos_label, width=custom_width, height=custom_height
         )
@@ -117,15 +129,24 @@ class TestMachineLearningROCCurve:
 class TestMachineLearningCutoffCurve:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_cutoff):
+        """
+        Get the plot results
+        """
         self.result = plot_result_cutoff
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = "Decision Boundary"
         # Act
@@ -134,6 +155,9 @@ class TestMachineLearningCutoffCurve:
 
     @pytest.mark.skip(reason="Need to fix y axis")
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "Values"
         # Act
@@ -147,7 +171,7 @@ class TestMachineLearningCutoffCurve:
         # Act
         model = RandomForestClassifier("cutoff_curve_plot_test")
         model.drop()
-        model.fit(dummy_dist_vd, [col_name_1, col_name_2], by_col)
+        model.fit(dummy_dist_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
         result = model.cutoff_curve(
             pos_label=pos_label, width=custom_width, height=custom_height
         )
@@ -161,15 +185,24 @@ class TestMachineLearningCutoffCurve:
 class TestMachineLearningPRCCurve:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_prc):
+        """
+        Get the plot results
+        """
         self.result = plot_result_prc
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = "Recall"
         # Act
@@ -177,6 +210,9 @@ class TestMachineLearningPRCCurve:
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "Precision"
         # Act
@@ -205,9 +241,15 @@ class TestMachineLearningPRCCurve:
 class TestMachineLearningLiftChart:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_lift_chart):
+        """
+        Get the plot results
+        """
         self.result = plot_result_lift_chart
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -221,6 +263,9 @@ class TestMachineLearningLiftChart:
         assert self.result.get_title() == test_title, "Plot title incorrect"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = "Cumulative Data Fraction"
         # Act
@@ -229,6 +274,9 @@ class TestMachineLearningLiftChart:
 
     @pytest.mark.skip(reason="Need to fix y axis")
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "Values"
         # Act

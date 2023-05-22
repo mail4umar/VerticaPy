@@ -19,46 +19,65 @@ import pytest
 
 # Standard Python Modules
 
+# Vertica
+
 
 # Other Modules
-import numpy as np
 
 # Testing variables
-col_name_1 = "cats"
-by_col = "binary"
-
-# Vertica
-from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider()
-
-
-@pytest.fixture(scope="class")
-def plot_result_2(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider(by=by_col)
+COL_NAME_1 = "cats"
+BY_COL = "binary"
 
 
 class TestHighchartsVDCSpiderPlot:
+    """
+    Testing different attributes of Spider plot on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_dist_vd):
+        """
+        Create a spider plot for vDataColumn
+        """
+        return dummy_dist_vd[COL_NAME_1].spider()
+
+    @pytest.fixture(scope="class")
+    def plot_result_2(self, dummy_dist_vd):
+        """
+        Create a spider plot for vDataColumn using "by" parameter
+        """
+        return dummy_dist_vd[COL_NAME_1].spider(by=BY_COL)
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
-    def result_2(self, plot_result_2):
+    def by_result(self, plot_result_2):
+        """
+        Get the plot results
+        """
         self.by_result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_output_type_for_multiplot(
-        self, plotting_library_object, dummy_dist_vd
+        self,
+        plotting_library_object,
     ):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -66,7 +85,12 @@ class TestHighchartsVDCSpiderPlot:
             self.by_result, plotting_library_object
         ), "Wrong object created"
 
-    def test_properties_multiple_plots_produced_for_multiplot(self, dummy_dist_vd):
+    def test_properties_multiple_plots_produced_for_multiplot(
+        self,
+    ):
+        """
+        Test if multiple plots produced
+        """
         # Arrange
         number_of_plots = 2
         # Act

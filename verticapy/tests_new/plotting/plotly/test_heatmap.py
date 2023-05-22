@@ -32,15 +32,15 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "PetalLengthCm"
-col_name_2 = "SepalLengthCm"
+COL_NAME_1 = "PetalLengthCm"
+COL_NAME_2 = "SepalLengthCm"
 pivot_col_1 = "survived"
 pivot_col_2 = "pclass"
 
 
 @pytest.fixture(scope="class")
 def plot_result(iris_vd):
-    return iris_vd.heatmap([col_name_1, col_name_2])
+    return iris_vd.heatmap([COL_NAME_1, COL_NAME_2])
 
 
 @pytest.fixture(scope="class")
@@ -51,6 +51,9 @@ def plot_result_pivot(titanic_vd):
 class TestVDFHeatMap:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -58,6 +61,9 @@ class TestVDFHeatMap:
         self.pivot_result = plot_result_pivot
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -86,7 +92,7 @@ class TestVDFHeatMap:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -95,7 +101,7 @@ class TestVDFHeatMap:
         self,
     ):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -139,8 +145,8 @@ class TestVDFHeatMap:
 
     def test_data_x_range(self, iris_vd):
         # Arrange
-        upper_bound = iris_vd[col_name_1].max()
-        lower_bound = iris_vd[col_name_1].min()
+        upper_bound = iris_vd[COL_NAME_1].max()
+        lower_bound = iris_vd[COL_NAME_1].min()
         # Act
         x_array = np.array(self.result.data[0]["x"], dtype=float)
         # Assert
@@ -150,8 +156,8 @@ class TestVDFHeatMap:
 
     def test_data_y_range(self, iris_vd):
         # Arrange
-        upper_bound = iris_vd[col_name_2].max()
-        lower_bound = iris_vd[col_name_2].min()
+        upper_bound = iris_vd[COL_NAME_2].max()
+        lower_bound = iris_vd[COL_NAME_2].min()
         # Act
         y_array = np.array(self.result.data[0]["y"], dtype=float)
         # Assert
@@ -165,7 +171,7 @@ class TestVDFHeatMap:
         custom_height = 700
         # Act
         result = iris_vd.heatmap(
-            [col_name_1, col_name_2], width=custom_width, height=custom_height
+            [COL_NAME_1, COL_NAME_2], width=custom_width, height=custom_height
         )
         # Assert
         assert (

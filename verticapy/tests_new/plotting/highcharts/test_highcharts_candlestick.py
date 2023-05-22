@@ -21,47 +21,56 @@ import pytest
 
 
 # Other Modules
-import numpy as np
+
 
 # Vertica
-from verticapy.tests_new.plotting.conftest import (
-    get_xaxis_label,
-    get_yaxis_label,
-    get_width,
-    get_height,
-)
 from vertica_highcharts.highstock.highstock import Highstock
 
 # Testing variables
-col_name_1 = "values"
-time_col = "date"
-col_of = "survived"
-by_col = "category"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_line_data_vd):
-    return dummy_line_data_vd[col_name_1].candlestick(ts=time_col)
+COL_NAME_1 = "values"
+TIME_COL = "date"
+COL_OF = "survived"
+BY_COL = "category"
 
 
 class TestHighChartsVDCCandlestick:
+    """
+    Testing different attributes of Candlestick plot on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_line_data_vd):
+        """
+        Create a candlestick plot for vDataColumn
+        """
+        return dummy_line_data_vd[COL_NAME_1].candlestick(ts=TIME_COL)
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, Highstock), "Wrong object created"
 
     def test_additional_options_custom_width_and_height(self, dummy_line_data_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 3
         custom_height = 4
         # Act
-        result = dummy_line_data_vd[col_name_1].candlestick(
-            ts=time_col, width=custom_width, height=custom_height
+        result = dummy_line_data_vd[COL_NAME_1].candlestick(
+            ts=TIME_COL, width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -75,10 +84,13 @@ class TestHighChartsVDCCandlestick:
     def test_properties_output_type_for_all_options(
         self, dummy_line_data_vd, method, start_date
     ):
+        """
+        Test "method" and "start date" parameters
+        """
         # Arrange
         # Act
-        result = dummy_line_data_vd[col_name_1].candlestick(
-            ts=time_col, method=method, start_date=start_date
+        result = dummy_line_data_vd[COL_NAME_1].candlestick(
+            ts=TIME_COL, method=method, start_date=start_date
         )
         # Assert - checking if correct object created
-        assert isinstance(self.result, Highstock), "Wrong object created"
+        assert isinstance(result, Highstock), "Wrong object created"

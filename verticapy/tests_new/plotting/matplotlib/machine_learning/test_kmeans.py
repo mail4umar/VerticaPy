@@ -31,8 +31,8 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "PetalLengthCm"
-col_name_2 = "PetalWidthCm"
+COL_NAME_1 = "PetalLengthCm"
+COL_NAME_2 = "PetalWidthCm"
 
 
 @pytest.fixture(scope="class")
@@ -40,7 +40,7 @@ def plot_result(iris_vd):
     model = KMeans(name="test_KMeans_iris")
     model.fit(
         iris_vd,
-        [col_name_1, col_name_2],
+        [COL_NAME_1, COL_NAME_2],
     )
     return model.plot_voronoi()
 
@@ -49,9 +49,15 @@ def plot_result(iris_vd):
 class TestMatplotlibMachineLearningVoronoiChart:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -61,7 +67,7 @@ class TestMatplotlibMachineLearningVoronoiChart:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -70,7 +76,7 @@ class TestMatplotlibMachineLearningVoronoiChart:
         self,
     ):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
@@ -88,11 +94,11 @@ class TestMatplotlibMachineLearningVoronoiChart:
         model = KMeans(name="test_KMeans_iris_2")
         model.fit(
             iris_vd,
-            [col_name_1, col_name_2],
+            [COL_NAME_1, COL_NAME_2],
         )
         # Act
         result = model.plot_voronoi(
-            [col_name_1, col_name_2],
+            [COL_NAME_1, COL_NAME_2],
             max_nb_points=max_nb_points,
             plot_crosses=plot_crosses,
         )

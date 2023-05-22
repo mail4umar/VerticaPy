@@ -21,37 +21,39 @@ import pytest
 
 
 # Other Modules
-import numpy as np
+
 
 # Vertica
-from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
+from verticapy.tests_new.plotting.conftest import get_xaxis_label
 
 # Testing variables
-col_name_1 = "0"
-col_name_2 = "binary"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].boxplot()
-
-
-@pytest.fixture(scope="class")
-def plot_result_2(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].boxplot(by=col_name_2)
-
-
-@pytest.fixture(scope="class")
-def plot_result_vDF(dummy_dist_vd):
-    return dummy_dist_vd.boxplot(columns=[col_name_1])
+COL_NAME_1 = "0"
+COL_NAME_2 = "binary"
 
 
 class TestHighchartsVDCBoxPlot:
+    """
+    Testing different attributes of Box plot on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_dist_vd):
+        """
+        Create a box plot for vDataColumn
+        """
+        return dummy_dist_vd[COL_NAME_1].boxplot()
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -59,13 +61,19 @@ class TestHighchartsVDCBoxPlot:
 
     @pytest.mark.skip(reason="The plot does not have label on x-axis yet")
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "0"
         # Act
@@ -76,11 +84,28 @@ class TestHighchartsVDCBoxPlot:
 
 
 class TestHighchartsParitionVDCBoxPlot:
+    """
+    Testing different attributes of Box plot on a vDataColumn using "by" attribute
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_2(self, dummy_dist_vd):
+        """
+        Create a box plot using "by" attribute for vDataColumn
+        """
+        return dummy_dist_vd[COL_NAME_1].boxplot(by=COL_NAME_2)
+
     @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
+    def result(self, plot_result_2):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -88,11 +113,28 @@ class TestHighchartsParitionVDCBoxPlot:
 
 
 class TestHighchartsVDFBoxPlot:
+    """
+    Testing different attributes of Box plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_vdf(self, dummy_dist_vd):
+        """
+        Create a box plot for vDataFrame
+        """
+        return dummy_dist_vd.boxplot(columns=[COL_NAME_1])
+
     @pytest.fixture(autouse=True)
-    def result(self, plot_result):
-        self.result = plot_result
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -100,13 +142,19 @@ class TestHighchartsVDFBoxPlot:
 
     @pytest.mark.skip(reason="The plot does not have label on x-axis yet")
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "0"
         # Act

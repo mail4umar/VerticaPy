@@ -21,10 +21,9 @@ import pytest
 
 
 # Other Modules
-import numpy as np
+
 
 # Vertica
-from verticapy.learn.neighbors import LocalOutlierFactor
 from verticapy.tests_new.plotting.conftest import (
     get_xaxis_label,
     get_yaxis_label,
@@ -33,40 +32,53 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "binary"
-col_of = "0"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].hist()
-
-
-@pytest.fixture(scope="class")
-def plot_result_vDF(dummy_dist_vd):
-    return dummy_dist_vd.hist(columns=[col_name_1])
+COL_NAME_1 = "binary"
+COL_OF = "0"
 
 
 @pytest.mark.skip(reason="Hist not available in Highcharts currently")
 class TestHighchartsVDCHistogramPlot:
+    """
+    Testing different attributes of Histogram plot on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_dist_vd):
+        """
+        Create a histogram plot for vDataColumn
+        """
+        return dummy_dist_vd[COL_NAME_1].hist()
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -74,11 +86,14 @@ class TestHighchartsVDCHistogramPlot:
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_height(self, dummy_dist_vd):
+        """
+        Test custom width and height
+        """
         # rrange
         custom_height = 6
         custom_width = 7
         # Act
-        result = dummy_dist_vd[col_name_1].hist(
+        result = dummy_dist_vd[COL_NAME_1].hist(
             height=custom_height,
             width=custom_width,
         )
@@ -92,35 +107,61 @@ class TestHighchartsVDCHistogramPlot:
     def test_properties_output_type_for_all_options(
         self, dummy_dist_vd, plotting_library_object, max_cardinality, method
     ):
+        """
+        Test different method types and number of max_cardinality
+        """
         # Arrange
         # Act
-        result = dummy_dist_vd[col_name_1].hist(
-            of=col_of, method=method, max_cardinality=max_cardinality
+        result = dummy_dist_vd[COL_NAME_1].hist(
+            of=COL_OF, method=method, max_cardinality=max_cardinality
         )
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"
 
 
 @pytest.mark.skip(reason="Hist not available in Highcharts currently")
 class TestHighchartsVDFHistogramPlot:
+    """
+    Testing different attributes of Histogram plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_vdf(self, dummy_dist_vd):
+        """
+        Create a histogram plot for vDataFrame
+        """
+        return dummy_dist_vd.hist(columns=[COL_NAME_1])
+
     @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -128,12 +169,15 @@ class TestHighchartsVDFHistogramPlot:
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_height(self, dummy_dist_vd):
+        """
+        Test custom width and height
+        """
         # rrange
         custom_height = 6
         custom_width = 7
         # Act
         result = dummy_dist_vd.hist(
-            columns=[col_name_1],
+            columns=[COL_NAME_1],
             height=custom_height,
             width=custom_width,
         )
@@ -147,13 +191,16 @@ class TestHighchartsVDFHistogramPlot:
     def test_properties_output_type_for_all_options(
         self, dummy_dist_vd, plotting_library_object, max_cardinality, method
     ):
+        """
+        Test different method types and number of max_cardinality
+        """
         # Arrange
         # Act
         result = dummy_dist_vd.hist(
-            columns=[col_name_1],
-            of=col_of,
+            columns=[COL_NAME_1],
+            of=COL_OF,
             method=method,
             max_cardinality=max_cardinality,
         )
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"

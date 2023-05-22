@@ -27,22 +27,22 @@ import numpy as np
 from verticapy.learn.linear_model import LogisticRegression
 
 # Testing variables
-col_name_1 = "fare"
-col_name_2 = "survived"
-col_name_3 = "age"
+COL_NAME_1 = "fare"
+COL_NAME_2 = "survived"
+COL_NAME_3 = "age"
 
 
 @pytest.fixture(scope="class")
 def plot_result(titanic_vd):
     model = LogisticRegression("log_reg_test")
-    model.fit(titanic_vd, [col_name_1], col_name_2)
+    model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
     return model.plot()
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(titanic_vd):
     model = LogisticRegression("log_reg_test_2")
-    model.fit(titanic_vd, [col_name_1, col_name_3], col_name_2)
+    model.fit(titanic_vd, [COL_NAME_1, COL_NAME_3], COL_NAME_2)
     return model.plot()
 
 
@@ -68,8 +68,11 @@ class TestMachineLearningLogisticRegressionPlot:
         assert type(self.result_3d) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert (
@@ -77,6 +80,9 @@ class TestMachineLearningLogisticRegressionPlot:
         ), "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "P(survived = 1)"
         # Act
@@ -87,7 +93,7 @@ class TestMachineLearningLogisticRegressionPlot:
 
     def test_properties_xaxis_label_for_3d(self):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert (
@@ -118,7 +124,7 @@ class TestMachineLearningLogisticRegressionPlot:
         custom_width = 700
         # Act
         model = LogisticRegression("log_reg_test_3")
-        model.fit(titanic_vd, [col_name_1], col_name_2)
+        model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
         result = model.plot(height=custom_height, width=custom_width)
         # Assert
         assert (

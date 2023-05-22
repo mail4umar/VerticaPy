@@ -32,27 +32,30 @@ from verticapy.tests_new.plotting.conftest import (
 import numpy as np
 
 # Testing variables
-time_col = "date"
-col_name_1 = "values"
-col_name_2 = "category"
-cat_option = "A"
+TIME_COL = "date"
+COL_NAME_1 = "values"
+COL_NAME_2 = "category"
+CAT_OPTION = "A"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_line_data_vd):
-    return dummy_line_data_vd[col_name_1].plot(ts=time_col, by=col_name_2)
+    return dummy_line_data_vd[COL_NAME_1].plot(ts=TIME_COL, by=COL_NAME_2)
 
 
 @pytest.fixture(scope="class")
-def plot_result_vDF(dummy_line_data_vd):
-    return dummy_line_data_vd[dummy_line_data_vd[col_name_2] == cat_option].plot(
-        ts=time_col, columns=col_name_1
+def plot_result_vdf(dummy_line_data_vd):
+    return dummy_line_data_vd[dummy_line_data_vd[COL_NAME_2] == CAT_OPTION].plot(
+        ts=TIME_COL, columns=COL_NAME_1
     )
 
 
 class TestPlotlyLinePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -60,6 +63,9 @@ class TestPlotlyLinePlot:
         self.vdf_result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -78,9 +84,9 @@ class TestPlotlyLinePlot:
     ):
         # Arrange
         # Act
-        result = dummy_line_data_vd[dummy_line_data_vd[col_name_2] == cat_option][
-            col_name_1
-        ].plot(ts=time_col)
+        result = dummy_line_data_vd[dummy_line_data_vd[COL_NAME_2] == CAT_OPTION][
+            COL_NAME_1
+        ].plot(ts=TIME_COL)
         # Assert - checking if correct object created
         assert type(result) == plotting_library_object, "wrong object created"
 
@@ -97,7 +103,7 @@ class TestPlotlyLinePlot:
         self,
     ):
         # Arrange
-        test_tile = col_name_1
+        test_tile = COL_NAME_1
         # Act
         # Assert - checking if correct object created
         assert get_yaxis_label(self.result) == test_tile, "Y axis title incorrect"
@@ -116,7 +122,7 @@ class TestPlotlyLinePlot:
         # Act
         assert (
             str(
-                dummy_line_data_vd[time_col][
+                dummy_line_data_vd[TIME_COL][
                     random.randint(0, len(dummy_line_data_vd)) - 1
                 ]
             )
@@ -124,12 +130,15 @@ class TestPlotlyLinePlot:
         ), "Two time values that exist in the data do not exist in the plot"
 
     def test_additional_options_custom_width_and_height(self, dummy_line_data_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 400
         custom_height = 600
         # Act
-        result = dummy_line_data_vd[col_name_1].plot(
-            ts=time_col, by=col_name_2, width=custom_width, height=custom_height
+        result = dummy_line_data_vd[COL_NAME_1].plot(
+            ts=TIME_COL, by=COL_NAME_2, width=custom_width, height=custom_height
         )
         # Assert - checking if correct object created
         assert (
@@ -139,8 +148,8 @@ class TestPlotlyLinePlot:
     def test_additional_options_marker_on(self, dummy_line_data_vd):
         # Arrange
         # Act
-        result = dummy_line_data_vd[col_name_1].plot(
-            ts=time_col, by=col_name_2, markers=True
+        result = dummy_line_data_vd[COL_NAME_1].plot(
+            ts=TIME_COL, by=COL_NAME_2, markers=True
         )
         # Assert - checking if correct object created
         assert set(result.data[0]["mode"]) == set(

@@ -28,27 +28,36 @@ from verticapy.learn.model_selection import elbow
 from verticapy.tests_new.plotting.conftest import get_xaxis_label
 
 # Testing variables
-col_name_1 = "PetalLengthCm"
-col_name_2 = "PetalWidthCm"
+COL_NAME_1 = "PetalLengthCm"
+COL_NAME_2 = "PetalWidthCm"
 
 
 @pytest.fixture(scope="class")
 def plot_result(iris_vd):
-    return elbow(input_relation=iris_vd, X=[col_name_1, col_name_2])
+    return elbow(input_relation=iris_vd, X=[COL_NAME_1, COL_NAME_2])
 
 
 class TestMachineLearningElbowCurve:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = "Number of Clusters"
         # Act
@@ -64,7 +73,7 @@ class TestMachineLearningElbowCurve:
         # Act
         result = elbow(
             input_relation=iris_vd,
-            X=[col_name_1, col_name_2],
+            X=[COL_NAME_1, COL_NAME_2],
             width=custom_width,
             height=custom_height,
         )

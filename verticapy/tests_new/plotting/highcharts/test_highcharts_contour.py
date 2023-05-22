@@ -21,60 +21,85 @@ import pytest
 
 
 # Other Modules
-import numpy as np
+
 
 # Vertica
 from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
 
 # Testing variables
-col_name_1 = "0"
-col_name_2 = "binary"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_dist_vd):
-    def func(a, b):
-        return b
-
-    return dummy_dist_vd.contour([col_name_1, col_name_2], func)
+COL_NAME_1 = "0"
+COL_NAME_2 = "binary"
 
 
 class TestHighchartsVDFContourPlot:
+    """
+    Testing different attributes of Contour plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_dist_vd):
+        """
+        Create a contour plot for vDataColumn
+        """
+
+        def func(param_a, param_b):
+            """
+            Arbitrary custom function for testing
+            """
+            return param_b + param_a * 0
+
+        return dummy_dist_vd.contour([COL_NAME_1, COL_NAME_2], func)
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert - checking y axis label
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 700
         custom_height = 700
 
-        def func(a, b):
-            return b
+        def func(param_a, param_b):
+            return param_b + param_a * 0
 
         # Act
         result = dummy_dist_vd.contour(
-            [col_name_1, col_name_2], func, width=custom_width, height=custom_height
+            [COL_NAME_1, COL_NAME_2], func, width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -86,11 +111,15 @@ class TestHighchartsVDFContourPlot:
     def test_properties_output_type_for_all_options(
         self, dummy_dist_vd, plotting_library_object, nbins
     ):
+        """
+        Test different bin sizes
+        """
+
         # Arrange
-        def func(a, b):
-            return b
+        def func(param_a, param_b):
+            return param_b + param_a * 0
 
         # Act
-        result = dummy_dist_vd.contour([col_name_1, col_name_2], func, nbins=nbins)
+        result = dummy_dist_vd.contour([COL_NAME_1, COL_NAME_2], func, nbins=nbins)
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"

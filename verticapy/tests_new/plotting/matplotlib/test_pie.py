@@ -27,8 +27,8 @@ from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_lab
 
 
 # Testing variables
-col_name = "check 1"
-col_name_2 = "check 2"
+COL_NAME = "check 1"
+COL_NAME_2 = "check 2"
 all_elements = {"1", "0", "A", "B", "C"}
 parents = ["0", "1"]
 children = ["A", "B", "C"]
@@ -36,12 +36,12 @@ children = ["A", "B", "C"]
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_vd):
-    return dummy_vd[col_name].pie()
+    return dummy_vd[COL_NAME].pie()
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(dummy_vd):
-    return dummy_vd.pie([col_name, col_name_2])
+    return dummy_vd.pie([COL_NAME, COL_NAME_2])
 
 
 @pytest.fixture(scope="class")
@@ -52,6 +52,9 @@ def plotting_library_object(matplotlib_figure_object):
 class TestMatplotlibVDCPiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type_for(self, plotting_library_object):
@@ -75,7 +78,7 @@ class TestMatplotlibVDCPiePlot:
                 self.result.get_legend().get_texts()[i].get_text()
                 for i in range(len(self.result.get_legend().get_texts()))
             ]
-        ) == set(dummy_vd.to_pandas()[col_name].unique())
+        ) == set(dummy_vd.to_pandas()[COL_NAME].unique())
 
     @pytest.mark.parametrize("kind", ["donut", "rose"])
     @pytest.mark.parametrize("max_cardinality", [2, 4])
@@ -88,7 +91,7 @@ class TestMatplotlibVDCPiePlot:
     ):
         # Arrange
         # Act
-        result = dummy_vd[col_name].pie(kind=kind, max_cardinality=max_cardinality)
+        result = dummy_vd[COL_NAME].pie(kind=kind, max_cardinality=max_cardinality)
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
@@ -96,6 +99,9 @@ class TestMatplotlibVDCPiePlot:
 class TestMatplotlibNestedVDFPiePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
+        """
+        Get the plot results
+        """
         self.result = plot_result_2
 
     def test_properties_type(self, plotting_library_object):

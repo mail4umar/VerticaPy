@@ -59,7 +59,7 @@ class TestHighchartsVDCBarPlot:
 
     def test_properties_output_type(self, plotting_library_object):
         """
-        Test if correct object created
+        Test if correct object created for bar chart
         """
         # Arrange
         # Act
@@ -68,7 +68,7 @@ class TestHighchartsVDCBarPlot:
 
     def test_data_ratios(self, dummy_vd):
         """
-        Test data ratio plotted
+        Test data ratio plotted for bar chart
         """
         ### Checking if the density was plotted correctly
         nums = dummy_vd.to_pandas()[COL_NAME].value_counts()
@@ -79,7 +79,7 @@ class TestHighchartsVDCBarPlot:
 
     def test_properties_xaxis_label(self):
         """
-        Test if correct x-axis label
+        Testing x-axis label for bar chart
         """
         # Arrange
         test_title = COL_NAME
@@ -89,7 +89,7 @@ class TestHighchartsVDCBarPlot:
 
     def test_properties_yaxis_label(self):
         """
-        Test if correct y-axis label
+        Testing y-axis title
         """
         # Arrange
         test_title = "density"
@@ -196,7 +196,7 @@ class TestHighchartsVDFBarPlot:
 
     def test_properties_xaxis_label(self):
         """
-        Test if correct x-axis label
+        Testing x-axis label
         """
         # Arrange
         test_title = COL_NAME_VDF_1
@@ -206,7 +206,7 @@ class TestHighchartsVDFBarPlot:
 
     def test_properties_yaxis_label(self):
         """
-        Test if correct y-axis label
+        Testing y-axis title
         """
         # Arrange
         test_title = "density"

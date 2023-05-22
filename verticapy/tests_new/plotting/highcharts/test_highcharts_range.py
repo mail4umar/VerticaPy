@@ -31,50 +31,66 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-time_col = "date"
-col_name_1 = "value"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_date_vd):
-    return dummy_date_vd[col_name_1].range_plot(ts=time_col, plot_median=True)
-
-
-@pytest.fixture(scope="class")
-def plot_result_vDF(dummy_date_vd):
-    return dummy_date_vd.range_plot(columns=[col_name_1], ts=time_col, plot_median=True)
+TIME_COL = "date"
+COL_NAME_1 = "value"
 
 
 class TestHighchartsVDCRangeCurve:
+    """
+    Testing different attributes of range curve plot on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_date_vd):
+        """
+        Create a range curve plot for vDataColumn
+        """
+        return dummy_date_vd[COL_NAME_1].range_plot(ts=TIME_COL, plot_median=True)
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
-    def test_properties_xaxis(
+    def test_properties_xaxis_label(
         self,
     ):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = time_col
+        test_title = TIME_COL
         # Act
         # Assert -
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
-    def test_properties_yaxis(
+    def test_properties_yaxis_label(
         self,
     ):
+        """
+        Testing y-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert -
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_data_x_axis(self, dummy_date_vd):
+        """
+        Test all unique values
+        """
         # Arrange
         test_set = set(dummy_date_vd.to_numpy()[:, 0])
         # Act
@@ -86,88 +102,15 @@ class TestHighchartsVDCRangeCurve:
         )
 
     def test_additional_options_custom_width_and_height(self, dummy_date_vd):
+        """
+        Test custom width and height
+        """
         # Arrange
         custom_width = 700
         custom_height = 700
         # Act
-        result = dummy_date_vd[col_name_1].range_plot(
-            ts=time_col, width=custom_width, height=custom_height
-        )
-        # Assert
-        assert (
-            get_width(result) == custom_width and get_height(result) == custom_height
-        ), "Custom width or height not working"
-
-    @pytest.mark.parametrize("plot_median", ["True", "False"])
-    @pytest.mark.parametrize("start_date", [1920])
-    @pytest.mark.parametrize("end_date", [1950])
-    def test_properties_output_type_for_all_options(
-        self,
-        dummy_date_vd,
-        plotting_library_object,
-        plot_median,
-        start_date,
-        end_date,
-    ):
-        # Arrange
-        # Act
-        result = dummy_date_vd[col_name_1].range_plot(
-            ts=time_col,
-            plot_median=plot_median,
-            start_date=start_date,
-            end_date=end_date,
-        )
-        # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
-
-
-class TestHighchartsVDFRangeCurve:
-    @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
-
-    def test_properties_output_type(self, plotting_library_object):
-        # Arrange
-        # Act
-        # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
-
-    def test_properties_xaxis(
-        self,
-    ):
-        # Arrange
-        test_title = time_col
-        # Act
-        # Assert -
-        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
-
-    def test_properties_yaxis(
-        self,
-    ):
-        # Arrange
-        test_title = col_name_1
-        # Act
-        # Assert -
-        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
-
-    def test_data_x_axis(self, dummy_date_vd):
-        # Arrange
-        test_set = set(dummy_date_vd.to_numpy()[:, 0])
-        # Act
-        assert test_set.issubset(
-            [
-                self.result.data_temp[0].data[i][0]
-                for i in range(len(self.result.data_temp[0].data))
-            ]
-        )
-
-    def test_additional_options_custom_width_and_height(self, dummy_date_vd):
-        # Arrange
-        custom_width = 700
-        custom_height = 700
-        # Act
-        result = dummy_date_vd.range_plot(
-            columns=[col_name_1], ts=time_col, width=custom_width, height=custom_height
+        result = dummy_date_vd[COL_NAME_1].range_plot(
+            ts=TIME_COL, width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -175,25 +118,137 @@ class TestHighchartsVDFRangeCurve:
         ), "Custom width or height not working"
 
     @pytest.mark.parametrize(
-        "start_date, plot_median, end_date",
-        [(1920, "True", None), (1910, "True", 1950)],
+        "plot_median, date_range",
+        [("True", [1920, None]), ("False", [None, 1950])],
     )
     def test_properties_output_type_for_all_options(
         self,
         dummy_date_vd,
         plotting_library_object,
         plot_median,
-        start_date,
-        end_date,
+        date_range,
     ):
+        """
+        Test different values for median, start date, and end date
+        """
+        # Arrange
+        # Act
+        result = dummy_date_vd[COL_NAME_1].range_plot(
+            ts=TIME_COL,
+            plot_median=plot_median,
+            start_date=date_range[0],
+            end_date=date_range[1],
+        )
+        # Assert - checking if correct object created
+        assert isinstance(result, plotting_library_object), "Wrong object created"
+
+
+class TestHighchartsVDFRangeCurve:
+    """
+    Testing different attributes of range curve plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_vdf(self, dummy_date_vd):
+        """
+        Create a range curve plot for vDataFrame
+        """
+        return dummy_date_vd.range_plot(
+            columns=[COL_NAME_1], ts=TIME_COL, plot_median=True
+        )
+
+    @pytest.fixture(autouse=True)
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
+
+    def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
+        # Arrange
+        # Act
+        # Assert - checking if correct object created
+        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+
+    def test_properties_xaxis_label(
+        self,
+    ):
+        """
+        Testing x-axis label
+        """
+        # Arrange
+        test_title = TIME_COL
+        # Act
+        # Assert -
+        assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
+
+    def test_properties_yaxis_label(
+        self,
+    ):
+        """
+        Testing y-axis label
+        """
+        # Arrange
+        test_title = COL_NAME_1
+        # Act
+        # Assert -
+        assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
+
+    def test_data_x_axis(self, dummy_date_vd):
+        """
+        Test all unique values
+        """
+        # Arrange
+        test_set = set(dummy_date_vd.to_numpy()[:, 0])
+        # Act
+        assert test_set.issubset(
+            [
+                self.result.data_temp[0].data[i][0]
+                for i in range(len(self.result.data_temp[0].data))
+            ]
+        )
+
+    def test_additional_options_custom_width_and_height(self, dummy_date_vd):
+        """
+        Test custom width and height
+        """
+        # Arrange
+        custom_width = 700
+        custom_height = 700
+        # Act
+        result = dummy_date_vd.range_plot(
+            columns=[COL_NAME_1], ts=TIME_COL, width=custom_width, height=custom_height
+        )
+        # Assert
+        assert (
+            get_width(result) == custom_width and get_height(result) == custom_height
+        ), "Custom width or height not working"
+
+    @pytest.mark.parametrize(
+        "plot_median, date_range",
+        [("True", [1920, None]), ("False", [None, 1950])],
+    )
+    def test_properties_output_type_for_all_options(
+        self,
+        dummy_date_vd,
+        plotting_library_object,
+        plot_median,
+        date_range,
+    ):
+        """
+        Tes different values for median, start date, and end date
+        """
         # Arrange
         # Act
         result = dummy_date_vd.range_plot(
-            columns=[col_name_1],
-            ts=time_col,
+            columns=[COL_NAME_1],
+            ts=TIME_COL,
             plot_median=plot_median,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=date_range[0],
+            end_date=date_range[1],
         )
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"

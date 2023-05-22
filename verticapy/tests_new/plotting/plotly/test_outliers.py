@@ -32,23 +32,26 @@ from verticapy.tests_new.plotting.conftest import (
 import numpy as np
 
 # Testing variables
-col_name_1 = "0"
-col_name_2 = "1"
+COL_NAME_1 = "0"
+COL_NAME_2 = "1"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_dist_vd):
-    return dummy_dist_vd.outliers_plot(columns=[col_name_1])
+    return dummy_dist_vd.outliers_plot(columns=[COL_NAME_1])
 
 
 @pytest.fixture(scope="class")
 def plot_result_2D(dummy_dist_vd):
-    return dummy_dist_vd.outliers_plot(columns=[col_name_1, col_name_2])
+    return dummy_dist_vd.outliers_plot(columns=[COL_NAME_1, COL_NAME_2])
 
 
 class TestPlotlyVDFOutliersPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -71,7 +74,7 @@ class TestPlotlyVDFOutliersPlot:
         self,
     ):
         # Arrange
-        column_name = col_name_1
+        column_name = COL_NAME_1
         # Act
         # Assert -
         assert self.result.data[0]["x"][0] == column_name, "X axis label incorrect"
@@ -80,7 +83,7 @@ class TestPlotlyVDFOutliersPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert -
         assert get_xaxis_label(self._2d_result) == test_title, "X axis label incorrect"
@@ -89,7 +92,7 @@ class TestPlotlyVDFOutliersPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert -
         assert get_yaxis_label(self._2d_result) == test_title, "X axis label incorrect"
@@ -99,9 +102,9 @@ class TestPlotlyVDFOutliersPlot:
         dummy_dist_vd,
     ):
         # Arrange
-        total_points = len(dummy_dist_vd[col_name_1])
+        total_points = len(dummy_dist_vd[COL_NAME_1])
         # Act
-        result = dummy_dist_vd.outliers_plot(columns=[col_name_1], max_nb_points=10000)
+        result = dummy_dist_vd.outliers_plot(columns=[COL_NAME_1], max_nb_points=10000)
         plot_points_count = sum(
             [result.data[i]["y"].shape[0] for i in range(len(result.data))]
         )
@@ -111,10 +114,10 @@ class TestPlotlyVDFOutliersPlot:
 
     def test_data_all_scatter_points_for_2d(self, dummy_dist_vd):
         # Arrange
-        total_points = len(dummy_dist_vd[col_name_1])
+        total_points = len(dummy_dist_vd[COL_NAME_1])
         # Act
         result = dummy_dist_vd.outliers_plot(
-            columns=[col_name_1, col_name_2], max_nb_points=10000
+            columns=[COL_NAME_1, COL_NAME_2], max_nb_points=10000
         )
         assert result.data[-1]["y"].shape[0] + result.data[-2]["y"].shape[
             0
@@ -133,12 +136,15 @@ class TestPlotlyVDFOutliersPlot:
         ), "The total number of elements plotted is not correct"
 
     def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 700
         custom_height = 700
         # Act
         result = dummy_dist_vd.outliers_plot(
-            columns=[col_name_1, col_name_2], width=custom_width, height=custom_height
+            columns=[COL_NAME_1, COL_NAME_2], width=custom_width, height=custom_height
         )
         # Assert
         assert (

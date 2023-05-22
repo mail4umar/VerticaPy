@@ -24,23 +24,26 @@ import pytest
 import numpy as np
 
 # Testing variables
-col_name_1 = "cats"
-by_col = "binary"
+COL_NAME_1 = "cats"
+BY_COL = "binary"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider()
+    return dummy_dist_vd[COL_NAME_1].spider()
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider(by=by_col)
+    return dummy_dist_vd[COL_NAME_1].spider(by=BY_COL)
 
 
 class TestPlotlyVDFSpiderPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -48,6 +51,9 @@ class TestPlotlyVDFSpiderPlot:
         self.by_result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -63,7 +69,7 @@ class TestPlotlyVDFSpiderPlot:
 
     def test_properties_title(self, load_plotly, dummy_dist_vd):
         # Arrange
-        column_name = col_name_1
+        column_name = COL_NAME_1
         # Act
         # Assert -
         assert self.result.layout["title"]["text"] == column_name, "Title incorrect"

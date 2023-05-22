@@ -34,10 +34,10 @@ from verticapy.tests_new.plotting.conftest import (
 
 
 # Testing variables
-col_name_1 = "X"
-col_name_2 = "Y"
-col_name_3 = "Z"
-col_name_4 = "Category"
+COL_NAME_1 = "X"
+COL_NAME_2 = "Y"
+COL_NAME_3 = "Z"
+COL_NAME_4 = "Category"
 all_categories = ["A", "B", "C"]
 
 
@@ -48,23 +48,23 @@ def plotting_library_object(matplotlib_figure_object):
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_scatter_vd):
-    return dummy_scatter_vd.scatter([col_name_1, col_name_2])
+    return dummy_scatter_vd.scatter([COL_NAME_1, COL_NAME_2])
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(dummy_scatter_vd):
-    return dummy_scatter_vd.scatter([col_name_1, col_name_2, col_name_3])
+    return dummy_scatter_vd.scatter([COL_NAME_1, COL_NAME_2, COL_NAME_3])
 
 
 @pytest.fixture(scope="class")
 def plot_result_3(dummy_scatter_vd):
     result = dummy_scatter_vd.scatter(
         [
-            col_name_1,
-            col_name_2,
-            col_name_3,
+            COL_NAME_1,
+            COL_NAME_2,
+            COL_NAME_3,
         ],
-        by=col_name_4,
+        by=COL_NAME_4,
     )
     return result
 
@@ -72,9 +72,15 @@ def plot_result_3(dummy_scatter_vd):
 class TestMatplotlibScatterVDF2DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -84,7 +90,7 @@ class TestMatplotlibScatterVDF2DPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -93,7 +99,7 @@ class TestMatplotlibScatterVDF2DPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
@@ -103,10 +109,10 @@ class TestMatplotlibScatterVDF2DPlot:
         # Act
         result = dummy_scatter_vd.scatter(
             [
-                col_name_2,
-                col_name_3,
+                COL_NAME_2,
+                COL_NAME_3,
             ],
-            by=col_name_4,
+            by=COL_NAME_4,
         )
         # Assert
         assert len(np.unique(result.collections[0].get_facecolors(), axis=0)) == len(
@@ -122,12 +128,15 @@ class TestMatplotlibScatterVDF2DPlot:
         ), "Number of points not consistent with data"
 
     def test_additional_options_custom_width_and_height(self, dummy_scatter_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 3
         custom_height = 4
         # Act
         result = dummy_scatter_vd.scatter(
-            [col_name_1, col_name_2],
+            [COL_NAME_1, COL_NAME_2],
             width=custom_width,
             height=custom_height,
         )
@@ -149,7 +158,7 @@ class TestMatplotlibScatterVDF2DPlot:
         # Arrange
         # Act
         result = dummy_scatter_vd.scatter(
-            [col_name_1, col_name_2],
+            [COL_NAME_1, COL_NAME_2],
             max_nb_points=max_nb_points,
             max_cardinality=max_cardinality,
         )
@@ -160,9 +169,15 @@ class TestMatplotlibScatterVDF2DPlot:
 class TestMatplotlibVDFScatter3DPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result_2):
+        """
+        Get the plot results
+        """
         self.result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -172,7 +187,7 @@ class TestMatplotlibVDFScatter3DPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -181,7 +196,7 @@ class TestMatplotlibVDFScatter3DPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert (
@@ -192,7 +207,7 @@ class TestMatplotlibVDFScatter3DPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_3
+        test_title = COL_NAME_3
         # Act
         # Assert
         assert (

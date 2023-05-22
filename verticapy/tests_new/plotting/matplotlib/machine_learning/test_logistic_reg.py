@@ -32,22 +32,22 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "fare"
-col_name_2 = "survived"
-col_name_3 = "age"
+COL_NAME_1 = "fare"
+COL_NAME_2 = "survived"
+COL_NAME_3 = "age"
 
 
 @pytest.fixture(scope="class")
 def plot_result(titanic_vd):
     model = LogisticRegression("log_reg_test")
-    model.fit(titanic_vd, [col_name_1], col_name_2)
+    model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
     return model.plot()
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(titanic_vd):
     model = LogisticRegression("log_reg_test_2")
-    model.fit(titanic_vd, [col_name_1, col_name_3], col_name_2)
+    model.fit(titanic_vd, [COL_NAME_1, COL_NAME_3], COL_NAME_2)
     return model.plot()
 
 
@@ -63,15 +63,21 @@ class TestMachineLearningLogisticRegressionPlot2D:
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
@@ -82,7 +88,7 @@ class TestMachineLearningLogisticRegressionPlot2D:
         custom_width = 7
         # Act
         model = LogisticRegression("log_reg_test_3")
-        model.fit(titanic_vd, [col_name_1], col_name_2)
+        model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
         result = model.plot(height=custom_height, width=custom_width)
         # Assert
         assert (
@@ -100,7 +106,7 @@ class TestMachineLearningLogisticRegressionPlot2D:
         # Arrange
         # Act
         model = LogisticRegression("log_reg_test_4")
-        model.fit(titanic_vd, [col_name_1], col_name_2)
+        model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
         result = model.plot(
             max_nb_points=max_nb_points,
         )
@@ -114,6 +120,9 @@ class TestMachineLearningLogisticRegressionPlot3D:
         self.result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -121,21 +130,21 @@ class TestMachineLearningLogisticRegressionPlot3D:
 
     def test_properties_xaxis_label_for_3d(self):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label_for_3d(self):
         # Arrange
-        test_title = col_name_3
+        test_title = COL_NAME_3
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
 
     def test_properties_zaxis_label_for_3d(self):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert get_zaxis_label(self.result) == test_title, "X axis label incorrect"

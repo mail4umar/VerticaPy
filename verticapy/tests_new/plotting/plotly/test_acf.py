@@ -47,6 +47,9 @@ def acf_plot_result(amazon_vd):
 class TestPlotlyVDFACFPlot:
     @pytest.fixture(autouse=True)
     def result(self, acf_plot_result):
+        """
+        Get the plot results
+        """
         self.result = acf_plot_result
 
     def test_properties_output_type_for(self, plotting_library_object):
@@ -56,6 +59,9 @@ class TestPlotlyVDFACFPlot:
         assert type(self.result) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = "Lag"
         # Act
@@ -114,6 +120,9 @@ class TestPlotlyVDFACFPlot:
         ), "Number of lag points inconsistent"
 
     def test_additional_options_custom_width_and_height(self, load_plotly, amazon_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 700
         custom_height = 700

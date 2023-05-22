@@ -32,28 +32,31 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name = "0"
-by_col = "binary"
+COL_NAME = "0"
+BY_COL = "binary"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name].density()
+    return dummy_dist_vd[COL_NAME].density()
 
 
 @pytest.fixture(scope="class")
 def plot_result_multiplot(dummy_dist_vd):
-    return dummy_dist_vd[col_name].density(by=by_col)
+    return dummy_dist_vd[COL_NAME].density(by=BY_COL)
 
 
 @pytest.fixture(scope="class")
-def plot_result_vDF(dummy_dist_vd):
-    return dummy_dist_vd.density(columns=[col_name])
+def plot_result_vdf(dummy_dist_vd):
+    return dummy_dist_vd.density(columns=[COL_NAME])
 
 
 class TestPlotlyVDCDensityPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -61,6 +64,9 @@ class TestPlotlyVDCDensityPlot:
         self.multi_plot_result = plot_result_multiplot
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -79,7 +85,7 @@ class TestPlotlyVDCDensityPlot:
         self,
     ):
         # Arrange
-        test_title = f'"{col_name}"'
+        test_title = f'"{COL_NAME}"'
         # Act
         # Assert -
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -130,23 +136,35 @@ class TestPlotlyVDCDensityPlot:
 
 class TestPlotlyVDFDensityPlot:
     @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = f'"{col_name}"'
+        test_title = f'"{COL_NAME}"'
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -154,12 +172,15 @@ class TestPlotlyVDFDensityPlot:
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 300
         custom_height = 400
         # Act
         result = dummy_dist_vd.density(
-            [col_name], width=custom_width, height=custom_height
+            [COL_NAME], width=custom_width, height=custom_height
         )
         # Assert
         assert (

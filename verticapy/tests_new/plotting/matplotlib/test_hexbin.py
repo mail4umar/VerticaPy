@@ -32,24 +32,27 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "age"
-col_name_2 = "fare"
-col_of = "survived"
+COL_NAME_1 = "age"
+COL_NAME_2 = "fare"
+COL_OF = "survived"
 
 
 @pytest.fixture(scope="class")
 def plot_result(titanic_vd):
-    return titanic_vd.hexbin(columns=[col_name_1, col_name_2])
+    return titanic_vd.hexbin(columns=[COL_NAME_1, COL_NAME_2])
 
 
 @pytest.fixture(scope="class")
 def plot_result_by(titanic_vd):
-    return titanic_vd.hexbin(columns=[col_name_1, col_name_2], method="avg", of=col_of)
+    return titanic_vd.hexbin(columns=[COL_NAME_1, COL_NAME_2], method="avg", of=COL_OF)
 
 
 class TestMatplotlibHeatMap:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -57,6 +60,9 @@ class TestMatplotlibHeatMap:
         self.pivot_result = plot_result_by
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -71,26 +77,35 @@ class TestMatplotlibHeatMap:
         ), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert - checking y axis label
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_width_and_height(self, titanic_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 3
         custom_height = 4
         # Act
         result = titanic_vd.hexbin(
-            columns=[col_name_1, col_name_2], width=custom_width, height=custom_height
+            columns=[COL_NAME_1, COL_NAME_2], width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -104,7 +119,7 @@ class TestMatplotlibHeatMap:
         # Arrange
         # Act
         result = titanic_vd.hexbin(
-            columns=[col_name_1, col_name_2], method=method, of=col_of
+            columns=[COL_NAME_1, COL_NAME_2], method=method, of=COL_OF
         )
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"

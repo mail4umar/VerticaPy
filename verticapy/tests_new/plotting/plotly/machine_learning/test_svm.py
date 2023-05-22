@@ -27,23 +27,23 @@ import pytest
 from verticapy.learn.svm import LinearSVC
 
 # Testing variables
-col_name_1 = "X"
-col_name_2 = "Y"
-col_name_3 = "Z"
-by_col = "Category"
+COL_NAME_1 = "X"
+COL_NAME_2 = "Y"
+COL_NAME_3 = "Z"
+BY_COL = "Category"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_pred_data_vd):
     model = LinearSVC(name="public.SVC")
-    model.fit(dummy_pred_data_vd, [col_name_1], by_col)
+    model.fit(dummy_pred_data_vd, [COL_NAME_1], BY_COL)
     return model.plot()
 
 
 @pytest.fixture(scope="class")
 def plot_result_2d(load_plotly, dummy_pred_data_vd):
     model = LinearSVC(name="public.SVC")
-    model.fit(dummy_pred_data_vd, [col_name_1, col_name_2], by_col)
+    model.fit(dummy_pred_data_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
     return model.plot()
 
 
@@ -52,8 +52,8 @@ def plot_result_3d(load_plotly, dummy_pred_data_vd):
     model = LinearSVC(name="public.SVC")
     model.fit(
         dummy_pred_data_vd,
-        [col_name_1, col_name_2, col_name_3],
-        by_col,
+        [COL_NAME_1, COL_NAME_2, COL_NAME_3],
+        BY_COL,
     )
     return model.plot()
 
@@ -61,6 +61,9 @@ def plot_result_3d(load_plotly, dummy_pred_data_vd):
 class TestMachineLearningSVMClassifierPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result, plot_result_2d, plot_result_3d):
+        """
+        Get the plot results
+        """
         self.result = plot_result
         self.result_2d = plot_result_2d
         self.result_3d = plot_result_3d
@@ -84,8 +87,11 @@ class TestMachineLearningSVMClassifierPlot:
         assert type(self.result_3d) == plotting_library_object, "Wrong object crated"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert (
@@ -118,7 +124,7 @@ class TestMachineLearningSVMClassifierPlot:
         custom_height = 650
         custom_width = 700
         model = LinearSVC(name="public.SVC")
-        model.fit(dummy_pred_data_vd, [col_name_1], by_col)
+        model.fit(dummy_pred_data_vd, [COL_NAME_1], BY_COL)
         # Act
         result = model.plot(width=custom_width, height=custom_height)
         # Assert
@@ -134,7 +140,7 @@ class TestMachineLearningSVMClassifierPlot:
         custom_height = 650
         custom_width = 700
         model = LinearSVC(name="public.SVC")
-        model.fit(dummy_pred_data_vd, [col_name_1, col_name_2], by_col)
+        model.fit(dummy_pred_data_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
         # Act
         result = model.plot(width=custom_width, height=custom_height)
         # Assert

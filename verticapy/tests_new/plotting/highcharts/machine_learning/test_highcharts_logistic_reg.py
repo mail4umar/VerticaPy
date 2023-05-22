@@ -21,7 +21,7 @@ import pytest
 
 
 # Other Modules
-import numpy as np
+
 
 # Verticapy
 from verticapy.learn.linear_model import LogisticRegression
@@ -34,57 +34,71 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "fare"
-col_name_2 = "survived"
-col_name_3 = "age"
-
-
-@pytest.fixture(scope="class")
-def plot_result(titanic_vd):
-    model = LogisticRegression("log_reg_test")
-    model.fit(titanic_vd, [col_name_1], col_name_2)
-    return model.plot()
-
-
-@pytest.fixture(scope="class")
-def plot_result_2(titanic_vd):
-    model = LogisticRegression("log_reg_test")
-    model.fit(titanic_vd, [col_name_1, col_name_3], col_name_2)
-    return model.plot()
+COL_NAME_1 = "fare"
+COL_NAME_2 = "survived"
+COL_NAME_3 = "age"
 
 
 class TestHighchartsMachineLearningLogisticRegressionPlot2D:
+    """
+    Testing different attributes of 2D Logisti Regression plot
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, titanic_vd):
+        """
+        Create a logistic regression plot
+        """
+        model = LogisticRegression("log_reg_test")
+        model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
+        return model.plot()
+
     @pytest.fixture(autouse=True)
-    def result_2d(self, plot_result):
+    def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type_for_2d(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = f"p({col_name_2}=1)"
+        test_title = f"p({COL_NAME_2}=1)"
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
 
     def test_additional_options_custom_height(self, titanic_vd):
+        """
+        Test custom width and height
+        """
         # rrange
         custom_height = 6
         custom_width = 7
         # Act
         model = LogisticRegression("log_reg_test")
-        model.fit(titanic_vd, [col_name_1], col_name_2)
+        model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
         result = model.plot(height=custom_height, width=custom_width)
         # Assert
         assert (
@@ -98,46 +112,77 @@ class TestHighchartsMachineLearningLogisticRegressionPlot2D:
         plotting_library_object,
         max_nb_points,
     ):
+        """
+        Test different number of maximum points
+        """
         # Arrange
         # Act
         model = LogisticRegression("log_reg_test")
-        model.fit(titanic_vd, [col_name_1], col_name_2)
+        model.fit(titanic_vd, [COL_NAME_1], COL_NAME_2)
         result = model.plot(
             max_nb_points=max_nb_points,
         )
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"
 
 
 @pytest.mark.skip(reason="Currently highchart only supports 2D plot")
 class TestHighchartsMachineLearningLogisticRegressionPlot3D:
+    """
+    Testing different attributes of 3D Logisti Regression plot
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_2(self, titanic_vd):
+        """
+        Create a 3D logistic regression plot
+        """
+        model = LogisticRegression("log_reg_test")
+        model.fit(titanic_vd, [COL_NAME_1, COL_NAME_3], COL_NAME_2)
+        return model.plot()
+
     @pytest.fixture(autouse=True)
-    def result_3d(self, plot_result_2):
+    def result(self, plot_result_2):
+        """
+        Get the plot results
+        """
         self.result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_label_for_3d(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label_for_3d(self):
+        """
+        Testing y-axis label
+        """
         # Arrange
-        test_title = col_name_3
+        test_title = COL_NAME_3
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
 
     def test_properties_zaxis_label_for_3d(self):
+        """
+        Testing z-axis label
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert get_zaxis_label(self.result) == test_title, "X axis label incorrect"

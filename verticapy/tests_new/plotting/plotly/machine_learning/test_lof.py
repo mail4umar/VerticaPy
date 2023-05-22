@@ -27,22 +27,22 @@ import numpy as np
 from verticapy.learn.neighbors import LocalOutlierFactor
 
 # Testing variables
-col_name_1 = "X"
-col_name_2 = "Y"
-col_name_3 = "Z"
+COL_NAME_1 = "X"
+COL_NAME_2 = "Y"
+COL_NAME_3 = "Z"
 
 
 @pytest.fixture(scope="class")
 def plot_result(load_plotly, dummy_scatter_vd):
     model = LocalOutlierFactor("lof_test")
-    model.fit(dummy_scatter_vd, [col_name_1, col_name_2])
+    model.fit(dummy_scatter_vd, [COL_NAME_1, COL_NAME_2])
     return model.plot()
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(load_plotly, dummy_scatter_vd):
     model = LocalOutlierFactor("lof_test_3d")
-    model.fit(dummy_scatter_vd, [col_name_1, col_name_2, col_name_3])
+    model.fit(dummy_scatter_vd, [COL_NAME_1, COL_NAME_2, COL_NAME_3])
     return model.plot()
 
 
@@ -68,8 +68,11 @@ class TestMachineLearningLOFPlot:
         assert type(self.result_3d) == plotting_library_object, "wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert (
@@ -77,8 +80,11 @@ class TestMachineLearningLOFPlot:
         ), "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert (
@@ -87,7 +93,7 @@ class TestMachineLearningLOFPlot:
 
     def test_properties_xaxis_label_for_3d(self):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert (
@@ -96,7 +102,7 @@ class TestMachineLearningLOFPlot:
 
     def test_properties_yaxis_label_for_3d(self):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert (
@@ -140,7 +146,7 @@ class TestMachineLearningLOFPlot:
         custom_width = 700
         # Act
         model = LocalOutlierFactor("lof_test")
-        model.fit(dummy_scatter_vd, [col_name_1, col_name_2])
+        model.fit(dummy_scatter_vd, [COL_NAME_1, COL_NAME_2])
         result = model.plot(height=custom_height, width=custom_width)
         # Assert
         assert (

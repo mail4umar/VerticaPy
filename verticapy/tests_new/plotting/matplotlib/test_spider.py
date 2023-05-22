@@ -24,8 +24,8 @@ import pytest
 import numpy as np
 
 # Testing variables
-col_name_1 = "cats"
-by_col = "binary"
+COL_NAME_1 = "cats"
+BY_COL = "binary"
 
 # Vertica
 from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
@@ -38,17 +38,20 @@ def plotting_library_object(matplotlib_figure_object):
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider()
+    return dummy_dist_vd[COL_NAME_1].spider()
 
 
 @pytest.fixture(scope="class")
 def plot_result_2(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].spider(by=by_col)
+    return dummy_dist_vd[COL_NAME_1].spider(by=BY_COL)
 
 
 class TestVDFSpiderPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -56,6 +59,9 @@ class TestVDFSpiderPlot:
         self.by_result = plot_result_2
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created

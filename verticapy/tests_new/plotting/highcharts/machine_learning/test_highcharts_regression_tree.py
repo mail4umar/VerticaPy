@@ -33,31 +33,50 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "0"
-col_name_2 = "1"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_dist_vd):
-    model = DecisionTreeRegressor(name="model_titanic")
-    x_col = col_name_1
-    y_col = col_name_2
-    model.fit(dummy_dist_vd, x_col, y_col)
-    return model.plot(), x_col, y_col
+COL_NAME_1 = "0"
+COL_NAME_2 = "1"
 
 
 class TestHighchartsMachineLearningRegressionTreePlot:
+    """
+    Testing different attributes of Regression Tree plot
+    """
+
+    def __init__(self):
+        self.x_col = None
+        self.y_col = None
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_dist_vd):
+        """
+        Create a Regression Tree plot
+        """
+        model = DecisionTreeRegressor(name="model_titanic")
+        x_col = COL_NAME_1
+        y_col = COL_NAME_2
+        model.fit(dummy_dist_vd, x_col, y_col)
+        return model.plot(), x_col, y_col
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result, self.x_col, self.y_col = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = self.x_col
         # Act
@@ -65,6 +84,9 @@ class TestHighchartsMachineLearningRegressionTreePlot:
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = self.y_col
         # Act
@@ -72,11 +94,14 @@ class TestHighchartsMachineLearningRegressionTreePlot:
         assert get_yaxis_label(self.result) == test_title, "Y axis label incorrect"
 
     def test_additional_options_custom_height(self, dummy_dist_vd):
-        # rrange
+        """
+        Test custom width and height
+        """
+        # Arrange
         custom_height = 650
         custom_width = 700
         model = DecisionTreeRegressor(name="model_titanic")
-        model.fit(dummy_dist_vd, col_name_1, col_name_2)
+        model.fit(dummy_dist_vd, COL_NAME_1, COL_NAME_2)
         # Act
         result = model.plot(
             height=custom_height,

@@ -27,8 +27,8 @@ import numpy as np
 from verticapy.learn.cluster import KMeans
 
 # Testing variables
-col_name_1 = "PetalLengthCm"
-col_name_2 = "PetalWidthCm"
+COL_NAME_1 = "PetalLengthCm"
+COL_NAME_2 = "PetalWidthCm"
 
 
 @pytest.fixture(scope="class")
@@ -36,7 +36,7 @@ def plot_result(iris_vd):
     model = KMeans(name="test_KMeans_iris")
     model.fit(
         iris_vd,
-        [col_name_1, col_name_2],
+        [COL_NAME_1, COL_NAME_2],
     )
     return model.plot_voronoi()
 
@@ -44,17 +44,26 @@ def plot_result(iris_vd):
 class TestMachineLearningLiftChart:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert (
@@ -62,8 +71,11 @@ class TestMachineLearningLiftChart:
         ), "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert (
@@ -86,7 +98,7 @@ class TestMachineLearningLiftChart:
         model = KMeans(name="public.KMeans_iris")
         model.fit(
             iris_vd,
-            [col_name_1, col_name_2],
+            [COL_NAME_1, COL_NAME_2],
         )
         # Act
         result = model.plot_voronoi(width=custom_width, height=custom_height)

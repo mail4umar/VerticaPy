@@ -68,6 +68,9 @@ def dummy_data_parents_children():
 class Test_Convert_Labels_And_Get_Counts:
     @pytest.fixture(autouse=True)
     def result(self, dummy_data_parents_children):
+        """
+        Get the plot results
+        """
         func = PlotlyBase()
         self.result = func._convert_labels_and_get_counts(
             dummy_data_parents_children[0]

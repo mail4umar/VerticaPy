@@ -31,26 +31,32 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-time_col = "date"
-col_name_1 = "value"
+TIME_COL = "date"
+COL_NAME_1 = "value"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_date_vd):
-    return dummy_date_vd[col_name_1].range_plot(ts=time_col, plot_median=True)
+    return dummy_date_vd[COL_NAME_1].range_plot(ts=TIME_COL, plot_median=True)
 
 
 @pytest.fixture(scope="class")
-def plot_result_vDF(dummy_date_vd):
-    return dummy_date_vd.range_plot(columns=[col_name_1], ts=time_col, plot_median=True)
+def plot_result_vdf(dummy_date_vd):
+    return dummy_date_vd.range_plot(columns=[COL_NAME_1], ts=TIME_COL, plot_median=True)
 
 
 class TestMatplotlibRangeCurve:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -60,7 +66,7 @@ class TestMatplotlibRangeCurve:
         self,
     ):
         # Arrange
-        test_title = time_col
+        test_title = TIME_COL
         # Act
         # Assert -
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -69,7 +75,7 @@ class TestMatplotlibRangeCurve:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert -
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -81,12 +87,15 @@ class TestMatplotlibRangeCurve:
         assert test_set.issubset(self.result.get_xticks())
 
     def test_additional_options_custom_width_and_height(self, dummy_date_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 700
         custom_height = 700
         # Act
-        result = dummy_date_vd[col_name_1].range_plot(
-            ts=time_col, width=custom_width, height=custom_height
+        result = dummy_date_vd[COL_NAME_1].range_plot(
+            ts=TIME_COL, width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -106,8 +115,8 @@ class TestMatplotlibRangeCurve:
     ):
         # Arrange
         # Act
-        result = dummy_date_vd[col_name_1].range_plot(
-            ts=time_col,
+        result = dummy_date_vd[COL_NAME_1].range_plot(
+            ts=TIME_COL,
             plot_median=plot_median,
             start_date=start_date,
             end_date=end_date,
@@ -118,10 +127,16 @@ class TestMatplotlibRangeCurve:
 
 class TestMatplotlibVDFRangeCurve:
     @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -131,7 +146,7 @@ class TestMatplotlibVDFRangeCurve:
         self,
     ):
         # Arrange
-        test_title = time_col
+        test_title = TIME_COL
         # Act
         # Assert -
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -140,7 +155,7 @@ class TestMatplotlibVDFRangeCurve:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert -
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -154,12 +169,15 @@ class TestMatplotlibVDFRangeCurve:
         assert test_set.issubset(self.result.get_xticks())
 
     def test_additional_options_custom_width_and_height(self, dummy_date_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 700
         custom_height = 700
         # Act
         result = dummy_date_vd.range_plot(
-            columns=[col_name_1], ts=time_col, width=custom_width, height=custom_height
+            columns=[COL_NAME_1], ts=TIME_COL, width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -181,8 +199,8 @@ class TestMatplotlibVDFRangeCurve:
         # Arrange
         # Act
         result = dummy_date_vd.range_plot(
-            columns=[col_name_1],
-            ts=time_col,
+            columns=[COL_NAME_1],
+            ts=TIME_COL,
             plot_median=plot_median,
             start_date=start_date,
             end_date=end_date,

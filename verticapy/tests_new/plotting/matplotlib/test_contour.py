@@ -32,8 +32,8 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "0"
-col_name_2 = "binary"
+COL_NAME_1 = "0"
+COL_NAME_2 = "binary"
 
 
 @pytest.fixture(scope="class")
@@ -41,35 +41,50 @@ def plot_result(dummy_dist_vd):
     def func(a, b):
         return b
 
-    return dummy_dist_vd.contour([col_name_1, col_name_2], func)
+    return dummy_dist_vd.contour([COL_NAME_1, COL_NAME_2], func)
 
 
 class TestVDFContourPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, matplotlib_figure_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, matplotlib_figure_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert - checking y axis label
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 700
         custom_height = 700
@@ -79,7 +94,7 @@ class TestVDFContourPlot:
 
         # Act
         result = dummy_dist_vd.contour(
-            [col_name_1, col_name_2], func, width=custom_width, height=custom_height
+            [COL_NAME_1, COL_NAME_2], func, width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -95,6 +110,6 @@ class TestVDFContourPlot:
             return b
 
         # Act
-        result = dummy_dist_vd.contour([col_name_1, col_name_2], func, nbins=nbins)
+        result = dummy_dist_vd.contour([COL_NAME_1, COL_NAME_2], func, nbins=nbins)
         # Assert - checking if correct object created
         assert isinstance(self.result, matplotlib_figure_object), "Wrong object created"

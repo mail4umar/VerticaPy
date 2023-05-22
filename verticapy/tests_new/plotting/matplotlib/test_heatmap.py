@@ -32,15 +32,15 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "PetalLengthCm"
-col_name_2 = "SepalLengthCm"
+COL_NAME_1 = "PetalLengthCm"
+COL_NAME_2 = "SepalLengthCm"
 pivot_col_1 = "survived"
 pivot_col_2 = "pclass"
 
 
 @pytest.fixture(scope="class")
 def plot_result(iris_vd):
-    return iris_vd.heatmap([col_name_1, col_name_2])
+    return iris_vd.heatmap([COL_NAME_1, COL_NAME_2])
 
 
 @pytest.fixture(scope="class")
@@ -51,6 +51,9 @@ def plot_result_pivot(titanic_vd):
 class TestMatplotlibVDFHeatMap:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     @pytest.fixture(autouse=True)
@@ -58,6 +61,9 @@ class TestMatplotlibVDFHeatMap:
         self.pivot_result = plot_result_pivot
 
     def test_properties_output_type(self, matplotlib_figure_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -81,15 +87,21 @@ class TestMatplotlibVDFHeatMap:
         assert isinstance(result, matplotlib_figure_object), "wrong object crated"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert - checking y axis label
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -115,12 +127,15 @@ class TestMatplotlibVDFHeatMap:
         assert set(yaxis_labels).issubset(expected_labels), "Y-axis labels incorrect"
 
     def test_additional_options_custom_width_and_height(self, iris_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 3
         custom_height = 4
         # Act
         result = iris_vd.heatmap(
-            [col_name_1, col_name_2], width=custom_width, height=custom_height
+            [COL_NAME_1, COL_NAME_2], width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -134,7 +149,7 @@ class TestMatplotlibVDFHeatMap:
         # Arrange
         # Act
         result = iris_vd.heatmap(
-            [col_name_1, col_name_2],
+            [COL_NAME_1, COL_NAME_2],
             method=method,
         )
         # Assert - checking if correct object created

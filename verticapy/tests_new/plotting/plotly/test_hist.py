@@ -32,39 +32,51 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "binary"
-col_of = "0"
+COL_NAME_1 = "binary"
+COL_OF = "0"
 
 
 @pytest.fixture(scope="class")
 def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name_1].hist()
+    return dummy_dist_vd[COL_NAME_1].hist()
 
 
 @pytest.fixture(scope="class")
-def plot_result_vDF(dummy_dist_vd):
-    return dummy_dist_vd.hist(columns=[col_name_1])
+def plot_result_vdf(dummy_dist_vd):
+    return dummy_dist_vd.hist(columns=[COL_NAME_1])
 
 
 class TestHistogram:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -86,7 +98,7 @@ class TestHistogram:
         custom_width = 700
         # Act
 
-        result = dummy_dist_vd[col_name_1].hist(
+        result = dummy_dist_vd[COL_NAME_1].hist(
             height=custom_height,
             width=custom_width,
         )
@@ -98,23 +110,35 @@ class TestHistogram:
 
 class TestPlotlyVDFHistogramPlot:
     @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -127,7 +151,7 @@ class TestPlotlyVDFHistogramPlot:
         custom_width = 400
         # Act
         result = dummy_dist_vd.hist(
-            columns=[col_name_1],
+            columns=[COL_NAME_1],
             height=custom_height,
             width=custom_width,
         )
@@ -145,8 +169,8 @@ class TestPlotlyVDFHistogramPlot:
         # Arrange
         # Act
         result = dummy_dist_vd.hist(
-            columns=[col_name_1],
-            of=col_of,
+            columns=[COL_NAME_1],
+            of=COL_OF,
             method=method,
             max_cardinality=max_cardinality,
         )

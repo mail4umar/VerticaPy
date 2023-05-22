@@ -28,11 +28,11 @@ from verticapy.learn.model_selection import stepwise
 from verticapy.learn.linear_model import LogisticRegression
 
 # Testing variables
-col_name_1 = "age"
-col_name_2 = "fare"
-col_name_3 = "parch"
-col_name_4 = "pclass"
-by_col = "survived"
+COL_NAME_1 = "age"
+COL_NAME_2 = "fare"
+COL_NAME_3 = "parch"
+COL_NAME_4 = "pclass"
+BY_COL = "survived"
 
 
 @pytest.fixture(scope="class")
@@ -44,12 +44,12 @@ def plot_result(titanic_vd):
         model,
         input_relation=titanic_vd,
         X=[
-            col_name_1,
-            col_name_2,
-            col_name_3,
-            col_name_4,
+            COL_NAME_1,
+            COL_NAME_2,
+            COL_NAME_3,
+            COL_NAME_4,
         ],
-        y=by_col,
+        y=BY_COL,
         direction="backward",
     )
     return stepwise_result.step_wise_
@@ -58,15 +58,24 @@ def plot_result(titanic_vd):
 class TestMachineLearningStepwisePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert type(self.result) == plotting_library_object, "Wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_title = "n_features"
         # Act
@@ -76,6 +85,9 @@ class TestMachineLearningStepwisePlot:
         ), "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "bic"
         # Act

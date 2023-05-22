@@ -27,8 +27,8 @@ import numpy as np
 from verticapy.learn.delphi import AutoML
 
 # Testing variables
-col_name_1 = "binary"
-col_name_2 = "0"
+COL_NAME_1 = "binary"
+COL_NAME_2 = "0"
 
 
 @pytest.fixture(scope="class")
@@ -37,9 +37,9 @@ def plot_result(dummy_dist_vd):
     model.fit(
         dummy_dist_vd,
         [
-            col_name_1,
+            COL_NAME_1,
         ],
-        col_name_2,
+        COL_NAME_2,
     )
     return model.plot()
 
@@ -47,9 +47,15 @@ def plot_result(dummy_dist_vd):
 class TestMachineLearningChampionChallengerPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created

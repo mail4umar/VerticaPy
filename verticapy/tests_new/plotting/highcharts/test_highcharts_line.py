@@ -16,7 +16,6 @@ permissions and limitations under the License.
 """
 # Pytest
 import pytest
-import random
 
 # Standard Python Modules
 
@@ -28,61 +27,60 @@ import random
 from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_yaxis_label
 
 # Testing variables
-time_col = "date"
-col_name_1 = "values"
-col_name_2 = "category"
-cat_option = "A"
+TIME_COL = "date"
+COL_NAME_1 = "values"
+COL_NAME_2 = "category"
+CAT_OPTION = "A"
 
 
-@pytest.fixture(scope="class")
-def plot_result(dummy_line_data_vd):
-    return dummy_line_data_vd[col_name_1].plot(ts=time_col, by=col_name_2)
+class TestHighchartsVDCLinePlot:
+    """
+    Testing different attributes of Line plot on a vDataColumn
+    """
 
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_line_data_vd):
+        """
+        Create a line plot for vDataColumn
+        """
+        return dummy_line_data_vd[COL_NAME_1].plot(ts=TIME_COL, by=COL_NAME_2)
 
-@pytest.fixture(scope="class")
-def plot_result_vDF(dummy_line_data_vd):
-    return dummy_line_data_vd[dummy_line_data_vd[col_name_2] == cat_option].plot(
-        ts=time_col, columns=col_name_1
-    )
-
-
-class TestHighchartsLinePlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
-    @pytest.fixture(autouse=True)
-    def result_2(self, plot_result_vDF):
-        self.vdf_result = plot_result_vDF
-
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
-    def test_properties_output_type_for_vDataFrame(self, plotting_library_object):
-        # Arrange
-        # Act
-        # Assert - checking if correct object created
-        assert isinstance(
-            self.vdf_result, plotting_library_object
-        ), "Wrong object created"
-
     def test_properties_output_type_for_one_trace(
         self, dummy_line_data_vd, plotting_library_object
     ):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
-        result = dummy_line_data_vd[dummy_line_data_vd[col_name_2] == cat_option][
-            col_name_1
-        ].plot(ts=time_col)
+        result = dummy_line_data_vd[dummy_line_data_vd[COL_NAME_2] == CAT_OPTION][
+            COL_NAME_1
+        ].plot(ts=TIME_COL)
         # Assert - checking if correct object created
         assert isinstance(result, plotting_library_object), "Wrong object created"
 
     def test_properties_x_axis_title(
         self,
     ):
+        """
+        Testing x-axis label
+        """
         # Arrange
         test_tile = "date"
         # Act
@@ -93,13 +91,19 @@ class TestHighchartsLinePlot:
     def test_properties_y_axis_title(
         self,
     ):
+        """
+        Testing y-axis label
+        """
         # Arrange
-        test_tile = col_name_1
+        test_tile = COL_NAME_1
         # Act
         # Assert - checking if correct object created
-        assert get_yaxis_label(self.result) == col_name_1, "Y axis title incorrect"
+        assert get_yaxis_label(self.result) == test_tile, "Y axis title incorrect"
 
     def test_data_count_of_all_values(self, dummy_line_data_vd):
+        """
+        Testing total points
+        """
         # Arrange
         total_count = dummy_line_data_vd.shape()[0]
         # Act
@@ -109,12 +113,15 @@ class TestHighchartsLinePlot:
         ), "The total values in the plot are not equal to the values in the dataframe."
 
     def test_additional_options_custom_width_and_height(self, dummy_line_data_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 40
         custom_height = 60
         # Act
-        result = dummy_line_data_vd[col_name_1].plot(
-            ts=time_col, by=col_name_2, width=custom_width, height=custom_height
+        result = dummy_line_data_vd[COL_NAME_1].plot(
+            ts=TIME_COL, by=COL_NAME_2, width=custom_width, height=custom_height
         )
         # Assert - checking if correct object created
         assert (
@@ -127,10 +134,44 @@ class TestHighchartsLinePlot:
     def test_properties_output_type_for_all_options(
         self, dummy_line_data_vd, plotting_library_object, start_date, kind
     ):
+        """
+        Testing different kinds and start date
+        """
         # Arrange
         # Act
-        result = dummy_line_data_vd[col_name_1].plot(
-            ts=time_col, kind=kind, start_date=start_date
+        result = dummy_line_data_vd[COL_NAME_1].plot(
+            ts=TIME_COL, kind=kind, start_date=start_date
         )
+        # Assert - checking if correct object created
+        assert isinstance(result, plotting_library_object), "Wrong object created"
+
+
+class TestHighchartsVDFLinePlot:
+    """
+    Testing different attributes of Line plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_vdf(self, dummy_line_data_vd):
+        """
+        Create a line plot for vDataFrame
+        """
+        return dummy_line_data_vd[dummy_line_data_vd[COL_NAME_2] == CAT_OPTION].plot(
+            ts=TIME_COL, columns=COL_NAME_1
+        )
+
+    @pytest.fixture(autouse=True)
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
+
+    def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
+        # Arrange
+        # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"

@@ -28,51 +28,74 @@ from verticapy.learn.svm import LinearSVC
 from verticapy.tests_new.plotting.conftest import get_xaxis_label, get_width, get_height
 
 # Testing variables
-col_name_1 = "X"
-col_name_2 = "Y"
-col_name_3 = "Z"
-by_col = "Category"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_pred_data_vd):
-    model = LinearSVC(name="public.SVC")
-    model.fit(dummy_pred_data_vd, [col_name_1], by_col)
-    return model.plot()
-
-
-@pytest.fixture(scope="class")
-def plot_result_2d(dummy_pred_data_vd):
-    model = LinearSVC(name="public.SVC")
-    model.fit(dummy_pred_data_vd, [col_name_1, col_name_2], by_col)
-    return model.plot()
-
-
-@pytest.fixture(scope="class")
-def plot_result_3d(dummy_pred_data_vd):
-    model = LinearSVC(name="public.SVC")
-    model.fit(
-        dummy_pred_data_vd,
-        [col_name_1, col_name_2, col_name_3],
-        by_col,
-    )
-    return model.plot()
+COL_NAME_1 = "X"
+COL_NAME_2 = "Y"
+COL_NAME_3 = "Z"
+BY_COL = "Category"
 
 
 class TestHighchartsMachineLearningSVMClassifierPlot:
+    """
+    Testing different attributes of SVM classifier plot
+    """
+
+    def __init__(self):
+        self.result_2d = None
+        self.result_3d = None
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_pred_data_vd):
+        """
+        Create 1D SVM classifier plot
+        """
+        model = LinearSVC(name="public.SVC")
+        model.fit(dummy_pred_data_vd, [COL_NAME_1], BY_COL)
+        return model.plot()
+
+    @pytest.fixture(scope="class")
+    def plot_result_2d(self, dummy_pred_data_vd):
+        """
+        Create 2D SVM classifier plot
+        """
+        model = LinearSVC(name="public.SVC")
+        model.fit(dummy_pred_data_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
+        return model.plot()
+
+    @pytest.fixture(scope="class")
+    def plot_result_3d(self, dummy_pred_data_vd):
+        """
+        Create 3D SVM classifier plot
+        """
+        model = LinearSVC(name="public.SVC")
+        model.fit(
+            dummy_pred_data_vd,
+            [COL_NAME_1, COL_NAME_2, COL_NAME_3],
+            BY_COL,
+        )
+        return model.plot()
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result, plot_result_2d):
+        """
+        Get the plot results
+        """
         self.result = plot_result
         self.result_2d = plot_result_2d
         # self.result_3d = plot_result_3d
 
     def test_properties_output_type_for_1d(self, plotting_library_object):
+        """
+        Test if correct object created for 1D plot
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_output_typefor_2d(self, plotting_library_object):
+        """
+        Test if correct object created for 2D plot
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -80,24 +103,35 @@ class TestHighchartsMachineLearningSVMClassifierPlot:
 
     @pytest.mark.skip(reason="3d plot not supported in highcharts")
     def test_properties_output_type_for_3d(self, plotting_library_object):
+        """
+        Test if correct object created for 3D plot
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(
+            self.result_3d, plotting_library_object
+        ), "Wrong object created"
 
     def test_properties_xaxis_label(self):
+        """
+        Testing x-axis label
+        """
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "Y axis label incorrect"
 
     def test_additional_options_custom_height(self, dummy_pred_data_vd):
+        """
+        Test custom width and height
+        """
         # rrange
         custom_height = 600
         custom_width = 300
         model = LinearSVC(name="public.SVC")
-        model.fit(dummy_pred_data_vd, [col_name_1], by_col)
+        model.fit(dummy_pred_data_vd, [COL_NAME_1], BY_COL)
         # Act
         result = model.plot(width=custom_width, height=custom_height)
         # Assert
@@ -106,11 +140,14 @@ class TestHighchartsMachineLearningSVMClassifierPlot:
         ), "Custom width or height not working"
 
     def test_additional_options_custom_height_for_2d(self, dummy_pred_data_vd):
+        """
+        Test custom width and height
+        """
         # rrange
         custom_height = 600
         custom_width = 700
         model = LinearSVC(name="public.SVC")
-        model.fit(dummy_pred_data_vd, [col_name_1, col_name_2], by_col)
+        model.fit(dummy_pred_data_vd, [COL_NAME_1, COL_NAME_2], BY_COL)
         # Act
         result = model.plot(width=custom_width, height=custom_height)
         # Assert

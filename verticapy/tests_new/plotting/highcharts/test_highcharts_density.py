@@ -32,44 +32,52 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name = "0"
-by_col = "binary"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_dist_vd):
-    return dummy_dist_vd[col_name].density()
-
-
-@pytest.fixture(scope="class")
-def plot_result_multiplot(dummy_dist_vd):
-    return dummy_dist_vd[col_name].density(by=by_col)
-
-
-@pytest.fixture(scope="class")
-def plot_result_vDF(dummy_dist_vd):
-    return dummy_dist_vd.density(columns=[col_name])
+COL_NAME = "0"
+BY_COL = "binary"
 
 
 class TestHighchartsVDCDensityPlot:
+    """
+    Testing different attributes of Density plot on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_dist_vd):
+        """
+        Create a density plot for vDataColumn
+        """
+        return dummy_dist_vd[COL_NAME].density()
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name
+        test_title = COL_NAME
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -77,11 +85,14 @@ class TestHighchartsVDCDensityPlot:
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 3
         custom_height = 4
         # Act
-        result = dummy_dist_vd[col_name].density(
+        result = dummy_dist_vd[COL_NAME].density(
             width=custom_width, height=custom_height
         )
         # Assert
@@ -94,58 +105,102 @@ class TestHighchartsVDCDensityPlot:
     def test_properties_output_type_for_all_options(
         self, dummy_dist_vd, plotting_library_object, nbins, kernel
     ):
+        """
+        Test different bin sizes and kernel types
+        """
         # Arrange
         # Act
-        result = dummy_dist_vd[col_name].density(kernel=kernel, nbins=nbins)
+        result = dummy_dist_vd[COL_NAME].density(kernel=kernel, nbins=nbins)
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"
 
 
 @pytest.mark.skip("Error in this highchart plot")
-class TestHighchartsDensityMultiPlot:
+class TestHighchartVDCDensityMultiPlot:
+    """
+    Testing different attributes of Multiple Density plots on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_multiplot(self, dummy_dist_vd):
+        """
+        Create a multi-density plot for vDataColumn
+        """
+        return dummy_dist_vd[COL_NAME].density(by=BY_COL)
+
     @pytest.fixture(autouse=True)
-    def result_2(self, plot_result_multiplot):
-        self.multi_plot_result = plot_result_multiplot
+    def result(self, plot_result_multiplot):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_multiplot
 
     def test_properties_output_type_for_multiplot(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
-        assert isinstance(
-            self.multi_plot_result, plotting_library_object
-        ), "wrong object crated"
+        assert isinstance(self.result, plotting_library_object), "wrong object crated"
 
     def test_properties_multiple_plots_produced_for_multiplot(
         self,
     ):
+        """
+        Test if two plots created
+        """
         # Arrange
         number_of_plots = 2
         # Act
         # Assert
         assert (
-            len(self.multi_plot_result.lines) == number_of_plots
+            len(self.result.lines) == number_of_plots
         ), "Two plots not produced for two classes"
 
 
 class TestHighchartsVDFDensityPlot:
+    """
+    Testing different attributes of Density plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_vdf(self, dummy_dist_vd):
+        """
+        Create a density plot for vDataFrame
+        """
+        return dummy_dist_vd.density(columns=[COL_NAME])
+
     @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "Wrong object created"
 
     def test_properties_xaxis_title(self):
+        """
+        Testing x-axis title
+        """
         # Arrange
-        test_title = col_name
+        test_title = COL_NAME
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_title(self):
+        """
+        Testing y-axis title
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -153,12 +208,15 @@ class TestHighchartsVDFDensityPlot:
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        """
+        Testing custom width and height
+        """
         # Arrange
         custom_width = 3
         custom_height = 4
         # Act
         result = dummy_dist_vd.density(
-            [col_name], width=custom_width, height=custom_height
+            [COL_NAME], width=custom_width, height=custom_height
         )
         # Assert
         assert (
@@ -170,8 +228,11 @@ class TestHighchartsVDFDensityPlot:
     def test_properties_output_type_for_all_options(
         self, dummy_dist_vd, plotting_library_object, nbins, kernel
     ):
+        """
+        Test different bin sizes and kernel types
+        """
         # Arrange
         # Act
         result = dummy_dist_vd["0"].density(kernel=kernel, nbins=nbins)
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"

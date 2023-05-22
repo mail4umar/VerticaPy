@@ -32,8 +32,8 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name_1 = "0"
-col_name_2 = "binary"
+COL_NAME_1 = "0"
+COL_NAME_2 = "binary"
 
 
 @pytest.fixture(scope="class")
@@ -41,15 +41,21 @@ def plot_result(dummy_dist_vd):
     def func(a, b):
         return b
 
-    return dummy_dist_vd.contour([col_name_1, col_name_2], func)
+    return dummy_dist_vd.contour([COL_NAME_1, COL_NAME_2], func)
 
 
 class TestPlotlyVDFContourPlot:
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
@@ -59,7 +65,7 @@ class TestPlotlyVDFContourPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_1
+        test_title = COL_NAME_1
         # Act
         # Assert
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -68,7 +74,7 @@ class TestPlotlyVDFContourPlot:
         self,
     ):
         # Arrange
-        test_title = col_name_2
+        test_title = COL_NAME_2
         # Act
         # Assert
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
@@ -90,7 +96,7 @@ class TestPlotlyVDFContourPlot:
 
         # Act
         result = dummy_dist_vd.contour(
-            columns=[col_name_1, col_name_2], nbins=custom_bins, func=func
+            columns=[COL_NAME_1, COL_NAME_2], nbins=custom_bins, func=func
         )
         # Assert
         assert (
@@ -99,8 +105,8 @@ class TestPlotlyVDFContourPlot:
 
     def test_data_x_axis_range(self, dummy_dist_vd):
         # Arrange
-        x_min = dummy_dist_vd[col_name_1].min()
-        x_max = dummy_dist_vd[col_name_1].max()
+        x_min = dummy_dist_vd[COL_NAME_1].min()
+        x_max = dummy_dist_vd[COL_NAME_1].max()
         custom_bins = 1000
         # Act
         # Assert
@@ -121,7 +127,7 @@ class TestPlotlyVDFContourPlot:
 
         # Act
         result = dummy_dist_vd.contour(
-            [col_name_1, col_name_2], func, width=custom_width, height=custom_height
+            [COL_NAME_1, COL_NAME_2], func, width=custom_width, height=custom_height
         )
         # Assert
         assert (
