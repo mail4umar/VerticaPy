@@ -20,41 +20,55 @@ import pytest
 # Standard Python Modules
 
 
-# Other Modules
-import numpy as np
-
 # Vertica
 from verticapy.tests_new.plotting.conftest import (
     get_xaxis_label,
-    get_yaxis_label,
     get_width,
     get_height,
 )
 
-@pytest.fixture(scope="class")
-def acf_plot_result(amazon_vd):
-    return amazon_vd.acf(
-        ts="date",
-        column="number",
-        p=12,
-        by=["state"],
-        unit="month",
-        method="spearman",
-    )
+# Other Modules
 
 
 class TestHighchartsVDFACFPlot:
+    """
+    Testing different attributes of ACF plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def acf_plot_fixture(self, amazon_vd):
+        """
+        Create an ACF plot
+        """
+        return amazon_vd.acf(
+            ts="date",
+            column="number",
+            p=12,
+            by=["state"],
+            unit="month",
+            method="spearman",
+        )
+
     @pytest.fixture(autouse=True)
-    def result(self, acf_plot_result):
-        self.result = acf_plot_result
+    def result(self, acf_plot_fixture):
+        """
+        Get the plot results
+        """
+        self.result = acf_plot_fixture
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "wrong object crated"
 
     def test_properties_xaxis_label(self):
+        """
+        Test if correct x-axis label
+        """
         # Arrange
         test_title = "lag"
         # Act
@@ -62,6 +76,9 @@ class TestHighchartsVDFACFPlot:
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_vertical_lines_for_custom_lag(self, amazon_vd):
+        """
+        Test to check number of vertical lines
+        """
         # Arrange
         lag_number = 24
         # Act
@@ -78,7 +95,12 @@ class TestHighchartsVDFACFPlot:
             len(result.data_temp[0].data) == lag_number
         ), "Number of vertical lines inconsistent"
 
-    def test_data_all_scatter_points(self, acf_plot_result):
+    def test_data_all_scatter_points(
+        self,
+    ):
+        """
+        Test to check if all points plotted
+        """
         # Arrange
         lag_number = 13
         # Act
@@ -88,6 +110,9 @@ class TestHighchartsVDFACFPlot:
         ), "Number of lag points inconsistent"
 
     def test_additional_options_custom_width_and_height(self, amazon_vd):
+        """
+        Test if custom width and height working
+        """
         # Arrange
         custom_width = 700
         custom_height = 700

@@ -19,26 +19,26 @@ import pytest
 
 # Standard Python Modules
 
+# VerticaPy
+import verticapy._config.config as conf
 
 # Other Modules
 from vertica_highcharts.highcharts.highcharts import Highchart
 
-# VerticaPy
-import verticapy._config.config as conf
-
 
 @pytest.fixture(scope="module")
-def plotting_library_object(highcharts_figure_object):
-    return highcharts_figure_object
+def plotting_library_object():
+    """
+    Set default plotting object to highcharts
+    """
+    return Highchart
 
 
 @pytest.fixture(scope="session", autouse=True)
 def load_matplotlib():
+    """
+    Set default plotting library to highcharts
+    """
     conf.set_option("plotting_lib", "highcharts")
     yield
     conf.set_option("plotting_lib", "plotly")
-
-
-@pytest.fixture(scope="session")
-def highcharts_figure_object():
-    yield Highchart

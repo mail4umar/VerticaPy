@@ -32,49 +32,65 @@ from verticapy.tests_new.plotting.conftest import (
 )
 
 # Testing variables
-col_name = "check 2"
-col_name_2 = "check 1"
-col_name_vdf_1 = "cats"
-col_name_vdf_of = "0"
-
-
-@pytest.fixture(scope="class")
-def plot_result(dummy_vd):
-    return dummy_vd[col_name].bar()
-
-
-@pytest.fixture(scope="class")
-def plot_result_vDF(dummy_dist_vd):
-    return dummy_dist_vd.bar(columns=[col_name_vdf_1])
+COL_NAME = "check 2"
+COL_NAME_2 = "check 1"
+COL_NAME_VDF_1 = "cats"
+COL_NAME_VDF_OF = "0"
 
 
 class TestHighchartsVDCBarPlot:
+    """
+    Testing different attributes of Bar plot on a vDataColumn
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result(self, dummy_vd):
+        """
+        Create a bar plot for vDataColumn
+        """
+        return dummy_vd[COL_NAME].bar()
+
     @pytest.fixture(autouse=True)
     def result(self, plot_result):
+        """
+        Get the plot results
+        """
         self.result = plot_result
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "wrong object crated"
 
     def test_data_ratios(self, dummy_vd):
+        """
+        Test data ratio plotted
+        """
         ### Checking if the density was plotted correctly
-        nums = dummy_vd.to_pandas()[col_name].value_counts()
+        nums = dummy_vd.to_pandas()[COL_NAME].value_counts()
         total = len(dummy_vd)
         assert set(self.result.data_temp[0].data).issubset(
             set([nums["A"] / total, nums["B"] / total, nums["C"] / total])
         )
 
     def test_properties_xaxis_label(self):
+        """
+        Test if correct x-axis label
+        """
         # Arrange
-        test_title = col_name
+        test_title = COL_NAME
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Test if correct y-axis label
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -82,16 +98,22 @@ class TestHighchartsVDCBarPlot:
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_all_categories_created(self):
+        """
+        Test all categories
+        """
         assert set(self.result.options["xAxis"].categories).issubset(
             set(["A", "B", "C"])
         )
 
     def test_additional_options_custom_width_and_height(self, dummy_vd):
+        """
+        Test custom width and height
+        """
         # Arrange
         custom_width = 3
         custom_height = 4
         # Act
-        result = dummy_vd[col_name].bar(
+        result = dummy_vd[COL_NAME].bar(
             width=custom_width,
             height=custom_height,
         )
@@ -101,17 +123,18 @@ class TestHighchartsVDCBarPlot:
         ), "Custom width or height not working"
 
     def test_additional_options_bargap(self, dummy_vd):
+        """
+        Test bargap option
+        """
         # Arrange
-        custom_width = 3
-        custom_height = 4
         # Act
-        result = dummy_vd[col_name].bar(
+        result = dummy_vd[COL_NAME].bar(
             bargap=0.5,
         )
         # Assert - checking if correct object created
         assert result.data_temp[0].pointPadding == 0.25, "Custom bargap not working"
 
-    @pytest.mark.parametrize("max_cardinality, bargap", [(1,0.1), (4,0.4)])
+    @pytest.mark.parametrize("max_cardinality, bargap", [(1, 0.1), (4, 0.4)])
     def test_properties_output_type_for_all_options(
         self,
         dummy_vd,
@@ -119,43 +142,72 @@ class TestHighchartsVDCBarPlot:
         bargap,
         max_cardinality,
     ):
+        """
+        Test max_cardinatlity and bar gap
+        """
         # Arrange
         # Act
-        result = dummy_vd[col_name].bar(
+        result = dummy_vd[COL_NAME].bar(
             bargap=bargap,
             max_cardinality=max_cardinality,
         )
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"
 
 
 class TestHighchartsVDFBarPlot:
+    """
+    Testing different attributes of Bar plot on a vDataFrame
+    """
+
+    @pytest.fixture(scope="class")
+    def plot_result_vdf(self, dummy_dist_vd):
+        """
+        Create a bar plot for vDataFrame
+        """
+        return dummy_dist_vd.bar(columns=[COL_NAME_VDF_1])
+
     @pytest.fixture(autouse=True)
-    def result(self, plot_result_vDF):
-        self.result = plot_result_vDF
+    def result(self, plot_result_vdf):
+        """
+        Get the plot results
+        """
+        self.result = plot_result_vdf
 
     def test_properties_output_type(self, plotting_library_object):
+        """
+        Test if correct object created
+        """
         # Arrange
         # Act
         # Assert - checking if correct object created
         assert isinstance(self.result, plotting_library_object), "wrong object crated"
 
     def test_data_ratios(self, dummy_dist_vd):
+        """
+        Test data ratio
+        """
         ### Checking if the density was plotted correctly
-        nums = dummy_dist_vd.to_pandas()[col_name_vdf_1].value_counts()
+        nums = dummy_dist_vd.to_pandas()[COL_NAME_VDF_1].value_counts()
         total = len(dummy_dist_vd)
         assert set(self.result.data_temp[0].data).issubset(
             set([nums["A"] / total, nums["B"] / total, nums["C"] / total])
         )
 
     def test_properties_xaxis_label(self):
+        """
+        Test if correct x-axis label
+        """
         # Arrange
-        test_title = col_name_vdf_1
+        test_title = COL_NAME_VDF_1
         # Act
         # Assert - checking x axis label
         assert get_xaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_properties_yaxis_label(self):
+        """
+        Test if correct y-axis label
+        """
         # Arrange
         test_title = "density"
         # Act
@@ -163,17 +215,23 @@ class TestHighchartsVDFBarPlot:
         assert get_yaxis_label(self.result) == test_title, "X axis label incorrect"
 
     def test_all_categories_created(self):
+        """
+        Test all categories
+        """
         assert set(self.result.options["xAxis"].categories).issubset(
             set(["A", "B", "C"])
         )
 
     def test_additional_options_custom_width_and_height(self, dummy_dist_vd):
+        """
+        Test custom width and height
+        """
         # Arrange
         custom_width = 300
         custom_height = 400
         # Act
         result = dummy_dist_vd.bar(
-            columns=[col_name_vdf_1],
+            columns=[COL_NAME_VDF_1],
             width=custom_width,
             height=custom_height,
         )
@@ -183,20 +241,23 @@ class TestHighchartsVDFBarPlot:
         ), "Custom width or height not working"
 
     @pytest.mark.parametrize(
-        "of, method", [(col_name_vdf_of, "min"), (col_name_vdf_of, "max")]
+        "of_col, method", [(COL_NAME_VDF_OF, "min"), (COL_NAME_VDF_OF, "max")]
     )
     def test_properties_output_type_for_all_options(
         self,
         dummy_dist_vd,
         plotting_library_object,
-        of,
+        of_col,
         method,
     ):
+        """
+        Test of and method combination
+        """
         # Arrange
         # Act
-        result = dummy_dist_vd[col_name_vdf_1].bar(
-            of=of,
+        result = dummy_dist_vd[COL_NAME_VDF_1].bar(
+            of=of_col,
             method=method,
         )
         # Assert - checking if correct object created
-        assert isinstance(self.result, plotting_library_object), "Wrong object created"
+        assert isinstance(result, plotting_library_object), "Wrong object created"
