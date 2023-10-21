@@ -43,6 +43,15 @@ General Classes.
 
 
 class LinearModel:
+    """
+    Base Class for all Linear Regression Models.
+
+    .. note:: This is base class for all vertica implementations of linear algorithms such as
+        :py:mod:`verticapy.machine_learning.vertica.Lasso`, :py:mod:`verticapy.machine_learning.vertica.Ridge`
+        :py:mod:`verticapy.machine_learning.vertica.LinearRegression`, :py:mod:`verticapy.machine_learning.vertica.ElasticNet`.
+
+    """
+    
     # Properties.
 
     @property
@@ -324,6 +333,166 @@ class ElasticNet(Regressor, LinearModel):
         in training the model.  Note that setting
         fit_intercept  to false does  not work well with
         the BFGS optimizer.
+
+    Example
+    --------
+
+    Load data for Machine Learning
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        import verticapy as vp
+        import verticapy.datasets as vpd
+        data = vpd.load_winequality()
+        train, test = data.train_test_split(test_size = 0.2)
+
+    Model Initialziation
+    ^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        from verticapy.machine_learning.vertica import ElasticNet
+        vp.drop("test_elastic_net_model") # To make sure no model wwith similar name
+        model = ElasticNet(name = "test_elastic_net_model",
+                                tol = 1e-6,
+                                C = 0.5,
+                                max_iter = 100, 
+                                solver = 'cgd',
+                                l1_ratio = 0.5)
+        
+    Model Training
+    ^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+        :okwarning:
+
+        model.fit(train,
+                ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"],
+                "quality",
+                test)
+    
+
+    Metrics
+    ^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.report()
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_elastic_net_report.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+    .. code-block:: python
+
+        result = model.report()
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_elastic_net_report.html
+
+    R-squared can be separately called using:
+
+    .. ipython:: python
+
+        model.score()
+    
+    Prediction
+    ^^^^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_elastic_net_model_prediction.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+
+    .. code-block:: python
+
+        model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_elastic_net_model_prediction.html
+
+    Plots
+    ^^^^^^
+
+    If the models allows, you can also draw the relevant plots.
+
+    .. code-block:: python
+
+        model.plot()    
+
+    .. note:: The plot generally works for models which have less than 3 predictors.
+
+    Parameter Tuning
+    ^^^^^^^^^^^^^^^^
+
+    In order to see the parameters:
+
+    .. ipython:: python
+
+        model.get_params()
+
+    And to manually change some of the parameters:
+
+    .. ipython:: python
+
+        model.set_params({'tol': 0.001})
+
+
+    Model Register
+    ^^^^^^^^^^^^^^
+
+    In order to register the model for tracking and versioning:
+
+    .. code-block:: python
+
+        model.register("model_v1")
+
+    Model Exporting
+    ^^^^^^^^^^^^^^^^
+
+    **To SQL**
+
+    .. code-block:: python
+
+        model.to_sql()
+
+
+    **To Memmodel**
+
+    .. code-block:: python
+
+        model.to_memmodel()
+
+
+    **To Python**
+
+    .. code-block:: python
+
+        model.to_python()
+
+    You can then use this function to predict as follows:
+
+    .. ipython:: python
+
+        import pandas as pd
+
+        model_python = model.to_python()
+        data = {
+            "fixed_acidity": [4.2],
+            "volatile_acidity": [0.17],
+            "citric_acid": [0.36],
+            "residual_sugar": [1.8],
+            "chlorides": [0.029],
+            "density": [0.9899]
+        }
+        test = pd.DataFrame(data)
+        model_python(test)
     """
 
     # Properties.
@@ -413,6 +582,167 @@ class Lasso(Regressor, LinearModel):
         used in  training the model.  Note that setting
         fit_intercept to false does not work well with the
         BFGS optimizer.
+
+    Example
+    --------
+
+
+    Load data for Machine Learning
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        import verticapy as vp
+        import verticapy.datasets as vpd
+        data = vpd.load_winequality()
+        train, test = data.train_test_split(test_size = 0.2)
+
+    Model Initialziation
+    ^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        from verticapy.machine_learning.vertica import Lasso
+        vp.drop("test_lasso_model") # To make sure no model wwith similar name
+        model = Lasso(name = "test_lasso_model",
+                                tol = 1e-6,
+                                C = 0.5,
+                                max_iter = 100, 
+                                solver = 'cgd',
+                                fit_intercept = True)
+        
+    Model Training
+    ^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+        :okwarning:
+
+        model.fit(train,
+                ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"],
+                "quality",
+                test)
+    
+
+    Metrics
+    ^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.report()
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_lasso_report.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+    .. code-block:: python
+
+        result = model.report()
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_lasso_report.html
+
+    R-squared can be separately called using:
+
+    .. ipython:: python
+
+        model.score()
+    
+    Prediction
+    ^^^^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_lasso_model_prediction.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+
+    .. code-block:: python
+
+        model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_lasso_model_prediction.html
+
+    Plots
+    ^^^^^^
+
+    If the models allows, you can also draw the relevant plots.
+
+    .. code-block:: python
+
+        model.plot()    
+
+    .. note:: The plot generally works for models which have less than 3 predictors.
+
+    Parameter Tuning
+    ^^^^^^^^^^^^^^^^
+
+    In order to see the parameters:
+
+    .. ipython:: python
+
+        model.get_params()
+
+    And to manually change some of the parameters:
+
+    .. ipython:: python
+
+        model.set_params({'tol': 0.001})
+
+
+    Model Register
+    ^^^^^^^^^^^^^^
+
+    In order to register the model for tracking and versioning:
+
+    .. code-block:: python
+
+        model.register("model_v1")
+
+    Model Exporting
+    ^^^^^^^^^^^^^^^^
+
+    **To SQL**
+
+    .. code-block:: python
+
+        model.to_sql()
+
+
+    **To Memmodel**
+
+    .. code-block:: python
+
+        model.to_memmodel()
+
+
+    **To Python**
+
+    .. code-block:: python
+
+        model.to_python()
+
+    You can then use this function to predict as follows:
+
+    .. ipython:: python
+
+        import pandas as pd
+
+        model_python = model.to_python()
+        data = {
+            "fixed_acidity": [4.2],
+            "volatile_acidity": [0.17],
+            "citric_acid": [0.36],
+            "residual_sugar": [1.8],
+            "chlorides": [0.029],
+            "density": [0.9899]
+        }
+        test = pd.DataFrame(data)
+        model_python(test)
     """
 
     # Properties.
@@ -494,6 +824,179 @@ class LinearRegression(Regressor, LinearModel):
         used in  training the model.  Note that setting
         fit_intercept to false does not work well with the
         BFGS optimizer.
+
+    Example
+    --------
+
+
+    Load data for Machine Learning
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        import verticapy as vp
+        import verticapy.datasets as vpd
+        data = vpd.load_winequality()
+        train, test = data.train_test_split(test_size = 0.2)
+
+    Model Initialziation
+    ^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        from verticapy.machine_learning.vertica import LinearRegression
+        vp.drop("test_lr_model") # To make sure no model wwith similar name
+        model = LinearRegression(name = "test_lr_model",
+                                tol = 1e-6,
+                                max_iter = 100, 
+                                solver = 'Newton',
+                                fit_intercept = True)
+        
+    Model Training
+    ^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        model.fit(train,
+                ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"],
+                "quality",
+                test)
+
+    Features Importance
+    ^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        @suppress
+        vp.set_option("plotting_lib", "matplotlib")
+
+
+    .. ipython:: python
+
+        @savefig machine_learning_vertica_linear_model_linear_reg.png
+        model.features_importance()
+    
+
+    Metrics
+    ^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.report()
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_report.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+    .. code-block:: python
+
+        result = model.report()
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_report.html
+
+    R-squared can be separately called using:
+
+    .. ipython:: python
+
+        model.score()
+    
+    Prediction
+    ^^^^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_prediction.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+
+    .. code-block:: python
+
+        model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_prediction.html
+
+    Plots
+    ^^^^^^
+
+    If the models allows, you can also draw the relevant plots.
+
+    .. code-block:: python
+
+        model.plot()    
+
+    .. note:: The plot generally works for models which have less than 3 predictors.
+
+    Parameter Tuning
+    ^^^^^^^^^^^^^^^^
+
+    In order to see the parameters:
+
+    .. ipython:: python
+
+        model.get_params()
+
+    And to manually change some of the parameters:
+
+    .. ipython:: python
+
+        model.set_params({'tol': 0.001})
+
+
+    Model Register
+    ^^^^^^^^^^^^^^
+
+    In order to register the model for tracking and versioning:
+
+    .. code-block:: python
+
+        model.register("model_v1")
+
+    Model Exporting
+    ^^^^^^^^^^^^^^^^
+
+    **To SQL**
+
+    .. code-block:: python
+
+        model.to_sql()
+
+
+    **To Memmodel**
+
+    .. code-block:: python
+
+        model.to_memmodel()
+
+
+    **To Python**
+
+    .. code-block:: python
+
+        model.to_python()
+
+    You can then use this function to predict as follows:
+
+    .. ipython:: python
+
+        import pandas as pd
+
+        model_python = model.to_python()
+        data = {
+            "fixed_acidity": [4.2],
+            "volatile_acidity": [0.17],
+            "citric_acid": [0.36],
+            "residual_sugar": [1.8],
+            "chlorides": [0.029],
+            "density": [0.9899]
+        }
+        test = pd.DataFrame(data)
+        model_python(test)
     """
 
     # Properties.
@@ -578,6 +1081,179 @@ class Ridge(Regressor, LinearModel):
         is used in training the model.
         Note  that setting fit_intercept to false  does
         not work well with the BFGS optimizer.
+
+    Example
+    --------
+
+
+    Load data for Machine Learning
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        import verticapy as vp
+        import verticapy.datasets as vpd
+        data = vpd.load_winequality()
+        train, test = data.train_test_split(test_size = 0.2)
+
+    Model Initialziation
+    ^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        from verticapy.machine_learning.vertica import Ridge
+        vp.drop("test_ridge_model") # To make sure no model wwith similar name
+        model = Ridge(name = "test_ridge_model",
+                                tol = 1e-6,
+                                max_iter = 100, 
+                                solver = 'Newton',
+                                fit_intercept = True)
+        
+    Model Training
+    ^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        model.fit(train,
+                ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"],
+                "quality",
+                test)
+
+    Features Importance
+    ^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        @suppress
+        vp.set_option("plotting_lib", "matplotlib")
+
+
+    .. ipython:: python
+
+        @savefig machine_learning_vertica_linear_model_ridge.png
+        model.features_importance()
+    
+
+    Metrics
+    ^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.report()
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_ridge_report.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+    .. code-block:: python
+
+        result = model.report()
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_ridge_report.html
+
+    R-squared can be separately called using:
+
+    .. ipython:: python
+
+        model.score()
+    
+    Prediction
+    ^^^^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_ridge_model_prediction.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+
+    .. code-block:: python
+
+        model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_ridge_model_prediction.html
+
+    Plots
+    ^^^^^^
+
+    If the models allows, you can also draw the relevant plots.
+
+    .. code-block:: python
+
+        model.plot()    
+
+    .. note:: The plot generally works for models which have less than 3 predictors.
+
+    Parameter Tuning
+    ^^^^^^^^^^^^^^^^
+
+    In order to see the parameters:
+
+    .. ipython:: python
+
+        model.get_params()
+
+    And to manually change some of the parameters:
+
+    .. ipython:: python
+
+        model.set_params({'tol': 0.001})
+
+
+    Model Register
+    ^^^^^^^^^^^^^^
+
+    In order to register the model for tracking and versioning:
+
+    .. code-block:: python
+
+        model.register("model_v1")
+
+    Model Exporting
+    ^^^^^^^^^^^^^^^^
+
+    **To SQL**
+
+    .. code-block:: python
+
+        model.to_sql()
+
+
+    **To Memmodel**
+
+    .. code-block:: python
+
+        model.to_memmodel()
+
+
+    **To Python**
+
+    .. code-block:: python
+
+        model.to_python()
+
+    You can then use this function to predict as follows:
+
+    .. ipython:: python
+
+        import pandas as pd
+
+        model_python = model.to_python()
+        data = {
+            "fixed_acidity": [4.2],
+            "volatile_acidity": [0.17],
+            "citric_acid": [0.36],
+            "residual_sugar": [1.8],
+            "chlorides": [0.029],
+            "density": [0.9899]
+        }
+        test = pd.DataFrame(data)
+        model_python(test)
     """
 
     # Properties.
@@ -677,6 +1353,179 @@ class LogisticRegression(BinaryClassifier, LinearModelClassifier):
         If set to false,  no intercept is used in
         training the model.  Note that setting fit_intercept
         to false does not work well with the BFGS optimizer.
+
+    Example
+    --------
+
+
+    Load data for Machine Learning
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        import verticapy as vp
+        import verticapy.datasets as vpd
+        data = vpd.load_winequality()
+        train, test = data.train_test_split(test_size = 0.2)
+
+    Model Initialziation
+    ^^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        from verticapy.machine_learning.vertica import Ridge
+        vp.drop("test_log_reg_model") # To make sure no model wwith similar name
+        model = Ridge(name = "test_log_reg_model",
+                                tol = 1e-6,
+                                max_iter = 100, 
+                                solver = 'Newton',
+                                fit_intercept = True)
+        
+    Model Training
+    ^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        model.fit(train,
+                ["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"],
+                "good",
+                test)
+
+    Features Importance
+    ^^^^^^^^^^^^^^^^^^^^
+
+    .. ipython:: python
+
+        @suppress
+        vp.set_option("plotting_lib", "matplotlib")
+
+
+    .. ipython:: python
+
+        @savefig machine_learning_vertica_linear_model_log_reg.png
+        model.features_importance()
+    
+
+    Metrics
+    ^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.report()
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_log_reg_report.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+    .. code-block:: python
+
+        result = model.report()
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_model_log_reg_report.html
+
+    R-squared can be separately called using:
+
+    .. ipython:: python
+
+        model.score()
+    
+    Prediction
+    ^^^^^^^^^^^
+
+    .. ipython:: python
+        :suppress:
+
+        result = model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+        html_file = open("SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_log_reg_model_prediction.html", "w")
+        html_file.write(result._repr_html_())
+        html_file.close()
+
+
+    .. code-block:: python
+
+        model.predict(test["fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "density"])
+
+
+    .. raw:: html
+        :file: SPHINX_DIRECTORY/figures/machine_learning_vertica_linear_log_reg_model_prediction.html
+
+    Plots
+    ^^^^^^
+
+    If the models allows, you can also draw the relevant plots.
+
+    .. code-block:: python
+
+        model.plot()    
+
+    .. note:: The plot generally works for models which have less than 3 predictors.
+
+    Parameter Tuning
+    ^^^^^^^^^^^^^^^^
+
+    In order to see the parameters:
+
+    .. ipython:: python
+
+        model.get_params()
+
+    And to manually change some of the parameters:
+
+    .. ipython:: python
+
+        model.set_params({'tol': 0.001})
+
+
+    Model Register
+    ^^^^^^^^^^^^^^
+
+    In order to register the model for tracking and versioning:
+
+    .. code-block:: python
+
+        model.register("model_v1")
+
+    Model Exporting
+    ^^^^^^^^^^^^^^^^
+
+    **To SQL**
+
+    .. code-block:: python
+
+        model.to_sql()
+
+
+    **To Memmodel**
+
+    .. code-block:: python
+
+        model.to_memmodel()
+
+
+    **To Python**
+
+    .. code-block:: python
+
+        model.to_python()
+
+    You can then use this function to predict as follows:
+
+    .. ipython:: python
+
+        import pandas as pd
+
+        model_python = model.to_python()
+        data = {
+            "fixed_acidity": [4.2],
+            "volatile_acidity": [0.17],
+            "citric_acid": [0.36],
+            "residual_sugar": [1.8],
+            "chlorides": [0.029],
+            "density": [0.9899]
+        }
+        test = pd.DataFrame(data)
+        model_python(test)
     """
 
     # Properties.
