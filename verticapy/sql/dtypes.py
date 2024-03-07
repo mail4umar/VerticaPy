@@ -14,6 +14,7 @@ OR CONDITIONS OF ANY KIND, either express or implied.
 See the  License for the specific  language governing
 permissions and limitations under the License.
 """
+import psycopg2
 import warnings
 import vertica_python
 from typing import Optional, Union
@@ -22,10 +23,11 @@ from vertica_python.errors import QueryError
 
 import verticapy._config.config as conf
 from verticapy._utils._gen import gen_tmp_name
+from verticapy._utils._sql._mapping import get_sql
 from verticapy._utils._sql._format import format_type, format_schema_table, quote_ident
 from verticapy._utils._sql._sys import _executeSQL
 from verticapy.connection import current_cursor
-
+from verticapy.connection.global_connection import get_global_connection
 
 from verticapy.sql.drop import drop
 
@@ -180,6 +182,9 @@ def get_data_types(
 
         | :py:func:`~verticapy.vertica_python_dtype` : Formats the input data type.
     """
+    print("COLUMN IS ...........", usecols)
+    print("SCHEMA ka naam....", schema)
+    print("Check kar USECOLS....", usecols)
     if not (schema):
         schema = conf.get_option("temp_schema")
     usecols = format_type(usecols, dtype=list)
@@ -195,9 +200,10 @@ def get_data_types(
             "parameter 'expression' is ignored."
         )
         warnings.warn(warning_message, Warning)
-    if isinstance(current_cursor(), vertica_python.vertica.cursor.Cursor) and not (
+    if isinstance(current_cursor(), (vertica_python.vertica.cursor.Cursor, psycopg2.extensions.cursor)) and not (
         table_name
     ):
+        print("IM IN!!")
         if column:
             column_name_ident = quote_ident(column)
             query = f"SELECT {column_name_ident} FROM ({expr}) x LIMIT 0;"
@@ -210,8 +216,10 @@ def get_data_types(
         else:
             query = expr
         try:
+            print("Query for execution is....", query)
             _executeSQL(query, print_time_sql=False)
             description, ctype = current_cursor().description, []
+            print("descrip....", description)
             for d in description:
                 ctype += [
                     [
@@ -230,8 +238,9 @@ def get_data_types(
         except QueryError:
             pass
     if not table_name:
-        table_name, schema = gen_tmp_name(name="table"), "v_temp_schema"
-        drop(format_schema_table(schema, table_name), method="table")
+        table_name, schema = gen_tmp_name(name="table"), schema # genuine bug
+        if get_global_connection().get_database() == "vertica":
+            drop(format_schema_table(schema, table_name), method="table")
         try:
             if schema == "v_temp_schema":
                 table = table_name
@@ -247,7 +256,8 @@ def get_data_types(
                 print_time_sql=False,
             )
         finally:
-            drop(format_schema_table(schema, table_name), method="table")
+            if get_global_connection().get_database() == "vertica":
+                drop(format_schema_table(schema, table_name), method="table")
         drop_final_table = True
     else:
         drop_final_table = False
@@ -274,13 +284,14 @@ def get_data_types(
                 column_name,
                 data_type 
             FROM 
-                (({query.format("columns")}) 
+                (({query.format(get_sql("get_data_types__1", get_global_connection().get_database()))}) 
                  UNION 
-                 ({query.format("view_columns")})) x 
+                 ({query.format(get_sql("get_data_types__2", get_global_connection().get_database()))})) x 
                 ORDER BY ordinal_position""",
         title="Getting the data types.",
     )
     ctype = cursor.fetchall()
+    print("This is the result of cursor query", ctype)
     if column and ctype:
         ctype = ctype[0][1]
     if drop_final_table:

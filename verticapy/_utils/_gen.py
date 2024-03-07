@@ -20,8 +20,10 @@ import string
 from typing import Optional
 
 from verticapy._utils._sql._format import quote_ident
+from verticapy._utils._sql._mapping import get_sql
 
 from verticapy.connection.connect import current_cursor
+from verticapy.connection.global_connection import get_global_connection
 
 
 def gen_name(L: list) -> str:
@@ -150,8 +152,10 @@ def gen_tmp_name(schema: Optional[str] = None, name: Optional[str] = None) -> st
         construct others, simplifying the overall
         code.
     """
-    current_cursor().execute("SELECT CURRENT_SESSION(), USERNAME();")
-    current_session, username = current_cursor().fetchone()
+    cursor = current_cursor()
+    print("current connection database is:", get_global_connection().get_database())
+    cursor.execute(get_sql("gen_tmp_name", get_global_connection().get_database())) #helper mapping function to interchange between databases
+    current_session, username = cursor.fetchone()
     session_user = f"{current_session}_{username}"
     L = session_user.split("_")
     L[0] = "".join(filter(str.isalnum, L[0]))

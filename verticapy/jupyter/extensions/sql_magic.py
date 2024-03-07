@@ -1027,9 +1027,11 @@ def sql_magic(
 
                 if not (is_vdf):
                     try:
+                        print("trying this query:....", query)
                         final_result = _executeSQL(
                             query, method="fetchfirstelem", print_time_sql=False
                         )
+                        print("FINAL RESULT:", final_result)
                         if final_result and conf.get_option("print_info"):
                             print(final_result)
                         elif (

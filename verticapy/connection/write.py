@@ -15,6 +15,7 @@ See the  License for the specific  language governing
 permissions and limitations under the License.
 """
 import warnings
+from typing import Optional
 
 from verticapy.connection.global_connection import get_global_connection
 from verticapy.connection.connect import connect
@@ -186,6 +187,7 @@ def new_connection(
     name: str = "vertica_connection",
     auto: bool = True,
     overwrite: bool = True,
+    database: Optional["str"] = "vertica",
 ) -> None:
     """
     Saves the new connection in the VerticaPy
@@ -297,8 +299,10 @@ def new_connection(
 
     if auto:
         change_auto_connection(name)
-
-    connect(name, path)
+    if database == "postgres":
+        connect(name, path, database = database)
+    else:
+        connect(name, path)
 
 
 new_auto_connection = new_connection

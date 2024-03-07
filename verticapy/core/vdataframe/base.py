@@ -630,6 +630,7 @@ class vDataFrame(vDFAnimatedPlot):
 
                 # Getting the main relation information
                 main_relation = f"({sql}) VERTICAPY_SUBTABLE"
+                print("trying to get data types.......")
                 dtypes = get_data_types(sql)
                 isflex = False
 
@@ -656,7 +657,7 @@ class vDataFrame(vDFAnimatedPlot):
                         schema=schema[1:-1],
                         usecols=usecols,
                     )
-
+            print("data types ARE:....", dtypes)
             columns = [quote_ident(dt[0]) for dt in dtypes]
             if len(columns) == 0:
                 raise MissingRelation(f"No table or views {input_relation} found.")
