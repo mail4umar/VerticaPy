@@ -19,6 +19,7 @@ import copy
 import decimal
 import datetime
 import math
+import psycopg2
 import time
 from typing import Any, Literal, Optional, TYPE_CHECKING, Union
 
@@ -36,6 +37,7 @@ from verticapy._utils._sql._sys import _executeSQL
 from verticapy._utils._sql._vertica_version import vertica_version
 from verticapy.errors import MissingColumn
 
+from verticapy.connection.global_connection import get_global_connection
 from verticapy.core.string_sql.base import StringSQL
 
 from verticapy.jupyter._javascript import datatables_repr
@@ -1060,13 +1062,7 @@ class TableSample:
             _clean_query=_clean_query,
         )
         description, dtype = cursor.description, {}
-        for elem in description:
-            dtype[elem[0]] = vertica_python_dtype(
-                type_name=elem.type_name,
-                display_size=elem[2],
-                precision=elem[4],
-                scale=elem[5],
-            )
+        dtype = get_dtype_dict(description, dtype)
         elapsed_time = time.time() - start_time
         if conf.get_option("time_on"):
             print_time(elapsed_time)
@@ -1668,3 +1664,21 @@ class TableSample:
                 to the :py:class:`~verticapy.core.tablesample.base.TableSample`.
         """
         return create_new_vdf(self.to_sql(), _clean_query=False)
+
+
+def get_dtype_dict(description, dtype: Optional[list] = {}):
+    if get_global_connection().get_database() == "postgres":
+        for column in description:
+            name = column.name
+            type_code = column.type_code
+            dtype[name] = psycopg2.extensions.string_types[type_code].name
+    else:
+        for elem in description:
+            dtype[elem[0]] = vertica_python_dtype(
+                type_name=elem.type_name,
+                display_size=elem[2],
+                precision=elem[4],
+                scale=elem[5],
+            )
+    return dtype
+

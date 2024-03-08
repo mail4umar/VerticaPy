@@ -204,7 +204,7 @@ class GlobalConnection:
         conn: Connection,
         section: Optional[str] = None,
         dsn: Optional[str] = None,
-        database: Optional[str] = "verticapy"
+        database: Optional[str] = "vertica"
     ) -> None:
         """
         Returns the current dsn section.

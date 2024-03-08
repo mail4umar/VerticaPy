@@ -217,23 +217,13 @@ def get_data_types(
             query = expr
         try:
             print("Query for execution is....", query)
-            _executeSQL(query, print_time_sql=False)
-            description, ctype = current_cursor().description, []
+            res = _executeSQL(query, print_time_sql=False)
+            description, ctype = res.description, []
             print("descrip....", description)
-            for d in description:
-                ctype += [
-                    [
-                        d[0],
-                        vertica_python_dtype(
-                            type_name=d.type_name,
-                            display_size=d[2],
-                            precision=d[4],
-                            scale=d[5],
-                        ),
-                    ]
-                ]
+            ctype = get_ctype(description, ctype)
             if column:
                 return ctype[0][1]
+            print("CTYPE IS ........", ctype)
             return ctype
         except QueryError:
             pass
@@ -297,3 +287,28 @@ def get_data_types(
     if drop_final_table:
         drop(format_schema_table(schema, table_name), method="table")
     return ctype
+
+
+def get_ctype(description, ctype: Optional[list] = []):
+    if get_global_connection().get_database() == "postgres":
+        
+        for column in description:
+            name = column.name
+            type_code = column.type_code
+            ctype +=[[name, psycopg2.extensions.string_types[type_code].name]]
+    else:
+        for d in description:
+            ctype += [
+                [
+                    d[0],
+                    vertica_python_dtype(
+                        type_name=d.type_name,
+                        display_size=d[2],
+                        precision=d[4],
+                        scale=d[5],
+                    ),
+                ]
+            ]
+    return ctype
+
+    
