@@ -181,6 +181,8 @@ def _executeSQL(
         with open(path, "r", encoding="utf-8") as f:
             cursor.copy(query, f)
     else:
+        print(query)
+        print(type(cursor))
         cursor.execute(query)
     elapsed_time = time.time() - start_time
     if conf.get_option("time_on") and print_time_sql:

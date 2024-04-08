@@ -19,6 +19,13 @@ import os
 from configparser import ConfigParser
 from typing import Optional
 
+def check_closed(conn, database):
+    if database == "postgres":
+        return conn.closed
+    if database == "clickhouse":
+        return not conn.is_closed
+    else:
+        return conn.closed()
 
 def get_confparser(dsn: Optional[str] = None) -> ConfigParser:
     """

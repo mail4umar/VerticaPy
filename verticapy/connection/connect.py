@@ -16,6 +16,8 @@ permissions and limitations under the License.
 """
 
 from typing import Optional
+import psycopg2, clickhouse_driver
+
 
 import vertica_python
 from vertica_python.vertica.cursor import Cursor
@@ -28,8 +30,8 @@ from verticapy.connection.global_connection import (
     GlobalConnection,
 )
 from verticapy.connection.read import read_dsn
-from verticapy.connection.utils import get_confparser, get_connection_file
-from verticapy.connection.write import new_connection
+from verticapy.connection.utils import get_confparser, get_connection_file, check_closed
+# from verticapy.connection.write import new_connection
 from verticapy.connection.oauth_manager import OAuthManager
 
 """
@@ -76,7 +78,7 @@ def auto_connect() -> None:
 read_auto_connect = auto_connect
 
 
-def connect(section: str, dsn: Optional[str] = None) -> None:
+def connect(section: str, dsn: Optional[str] = None, database: Optional[str] = "vertica") -> None:
     """
     Connects to the database.
 
@@ -126,7 +128,9 @@ def connect(section: str, dsn: Optional[str] = None) -> None:
     prev_conn = gb_conn.get_connection()
     if not dsn:
         dsn = get_connection_file()
-    if prev_conn and not prev_conn.closed():
+    print("DATABASE is.....", database)
+    if prev_conn and not check_closed(prev_conn, database):
+    # if prev_conn and not (callable(prev_conn.closed) and prev_conn.closed()):
         prev_conn.close()
     try:
         connection_config = read_dsn(section, dsn)
@@ -139,9 +143,21 @@ def connect(section: str, dsn: Optional[str] = None) -> None:
                 vertica_connection(section=None, dsn=None, config=connection_config)
             )
         else:
-            gb_conn.set_connection(
-                vertica_connection(section, dsn, config=None), section, dsn
-            )
+            if database == "postgres":
+                conn = read_dsn(section, dsn)#.pop("session_label")
+                del conn["session_label"] # ideally these things should be dealt with while writing
+                del conn["unicode_error"]
+                print(conn)
+                gb_conn.set_connection(psycopg2.connect(**conn), database = "postgres")
+                gb_conn.get_connection().cursor().execute("commit") # For some reason, we need a commit before doing anything with this.
+            if database == "clickhouse":
+                conn = read_dsn(section, dsn)#.pop("session_label")
+                del conn["session_label"] # ideally these things should be dealt with while writing
+                del conn["unicode_error"]
+                print(conn)
+                gb_conn.set_connection(clickhouse_driver.connect(**conn), database = "clickhouse")
+            else:
+                gb_conn.set_connection(vertica_connection(section, dsn), section, dsn)
         if conf.get_option("print_info"):
             print("Connected Successfully!")
     except OAuthTokenRefreshError as error:
@@ -246,9 +262,10 @@ def set_connection(conn: Connection) -> None:
             Creates a new VerticaPy connection.
     """
     try:
-        conn.cursor().execute("SELECT /*+LABEL('connect.set_connection')*/ 1;")
-        res = conn.cursor().fetchone()[0]
-        assert res == 1
+        # conn.cursor().execute("SELECT /*+LABEL('connect.set_connection')*/ 1;")
+        # res = conn.cursor().fetchone()[0]
+        print("trying to connect.....")
+        # assert res == 1
     except Exception as e:
         raise ConnectionError(f"The input connector is not working properly.\n{e}")
     gb_conn = get_global_connection()
@@ -361,14 +378,15 @@ def current_connection() -> GlobalConnection:
     conn = gb_conn.get_connection()
     dsn = gb_conn.get_dsn()
     section = gb_conn.get_dsn_section()
-
+    database = gb_conn.get_database()
     # Look if the connection does not exist or is closed
 
-    if not conn or conn.closed():
+    # if not conn or (callable(conn.closed) and conn.closed()):
+    if not conn or check_closed(conn, database):
         # Connection using the existing credentials
 
         if (section) and (dsn):
-            connect(section, dsn)
+            connect(section, dsn, database = database)
 
         else:
             try:

@@ -16,6 +16,7 @@ permissions and limitations under the License.
 """
 
 from getpass import getpass
+from typing import Optional
 import warnings
 import vertica_python
 
@@ -24,6 +25,7 @@ from verticapy.connection.errors import ConnectionError, OAuthTokenRefreshError
 from verticapy.connection.global_connection import get_global_connection
 from verticapy.connection.oauth_manager import OAuthManager
 from verticapy.connection.read import read_dsn
+from verticapy.connection.connect import connect
 from verticapy.connection.utils import get_confparser, get_connection_file
 
 
@@ -192,6 +194,7 @@ def new_connection(
     name: str = "vertica_connection",
     auto: bool = True,
     overwrite: bool = True,
+    database: Optional["str"] = "vertica",
     connect_attempt: bool = True,
     prompt: bool = False,
 ) -> None:
@@ -350,9 +353,13 @@ def new_connection(
         # To prevent auto-connection. Needed for re-prompts in case of errors.
         gb_conn = get_global_connection()
         try:
-            gb_conn.set_connection(
-                vertica_python.connect(**read_dsn(name, path)), name, path
-            )
+            if database == "postgres" or database == "clickhouse":
+                connect(name, path, database = database)
+            else:
+                connect(name, path)
+            # gb_conn.set_connection(
+            #     vertica_python.connect(**read_dsn(name, path)), name, path
+            # )
         except OAuthTokenRefreshError as e:
             print(
                 "Access Denied: Your authentication credentials are incorrect or have expired. Please retry"

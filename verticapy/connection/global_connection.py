@@ -73,11 +73,20 @@ class GlobalConnection:
             "conn": None,
             "section": None,
             "dsn": None,
+            "database": None,
         }
         self._external_connections = {}
 
-    # Main Methods.
 
+    # Method to map clickhouse is_closed to closed
+    def closed(self):
+
+        if self._connection["database"] == "clichouse":
+            return self._connection["conn"].is_closed
+        else:
+            return self._connection["conn"].closed
+
+    # Main Methods.
     def get_connection(self) -> Connection:
         """
         Returns the current connection.
@@ -153,6 +162,25 @@ class GlobalConnection:
         """
         return self._connection["dsn"]
 
+    def get_database(self) -> str:
+            """
+            Returns the current dsn.
+            Examples
+            --------
+            The following code demonstrates
+            the usage of the function.
+            .. ipython:: python
+                # Import the Global Connection.
+                from verticapy.connection.global_connection import get_global_connection
+                # Example
+                get_global_connection().get_dsn()
+            .. note::
+                These functions serve as utilities to
+                construct others, simplifying the overall
+                code.
+            """
+            return self._connection["database"]
+
     def get_dsn_section(self) -> str:
         """
         Returns the current dsn section.
@@ -183,6 +211,7 @@ class GlobalConnection:
         conn: Connection,
         section: Optional[str] = None,
         dsn: Optional[str] = None,
+        database: Optional[str] = "vertica"
     ) -> None:
         """
         Returns the current dsn section.
@@ -215,6 +244,7 @@ class GlobalConnection:
         self._connection["conn"] = conn
         self._connection["section"] = section
         self._connection["dsn"] = dsn
+        self._connection["database"] = database
 
     def set_external_connections(self, symbol: str, cid: str, rowset: int) -> None:
         """
