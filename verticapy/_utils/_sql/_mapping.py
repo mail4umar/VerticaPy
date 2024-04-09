@@ -30,7 +30,8 @@ def get_sql(
     mapping = {
         "gen_tmp_name": {
             "vertica": "SELECT CURRENT_SESSION(), USERNAME();",
-            "postgres": "SELECT pg_backend_pid() AS session_id, current_user;"
+            "postgres": "SELECT pg_backend_pid() AS session_id, current_user;",
+            "clickhouse": "SELECT query_id AS session_id, user AS user_name FROM system.query_log WHERE type = 1 ORDER BY event_time DESC LIMIT 1",
         },
         "get_data_types__1": {
             "vertica": "columns",

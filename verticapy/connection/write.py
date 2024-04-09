@@ -18,7 +18,7 @@ permissions and limitations under the License.
 from getpass import getpass
 from typing import Optional
 import warnings
-import vertica_python
+import vertica_python, clickhouse_driver
 
 import verticapy._config.config as conf
 from verticapy.connection.errors import ConnectionError, OAuthTokenRefreshError
@@ -354,6 +354,10 @@ def new_connection(
         gb_conn = get_global_connection()
         try:
             if database == "postgres" or database == "clickhouse":
+                conn = read_dsn(name, path)#.pop("session_label")
+                del conn["session_label"] # ideally these things should be dealt with while writing
+                del conn["unicode_error"]
+                # gb_conn.set_connection(clickhouse_driver.connect(**conn), database = "clickhouse")
                 connect(name, path, database = database)
             else:
                 connect(name, path)

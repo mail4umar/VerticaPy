@@ -80,8 +80,7 @@ class GlobalConnection:
 
     # Method to map clickhouse is_closed to closed
     def closed(self):
-
-        if self._connection["database"] == "clichouse":
+        if self._connection["database"] == "clickhouse":
             return self._connection["conn"].is_closed
         else:
             return self._connection["conn"].closed

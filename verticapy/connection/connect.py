@@ -63,7 +63,7 @@ def auto_connect() -> None:
     """
     gb_conn = get_global_connection()
     confparser = get_confparser()
-
+    database = gb_conn.get_database()
     if confparser.has_section(gb_conn.vpy_auto_connection):
         section = confparser.get(gb_conn.vpy_auto_connection, "name")
     else:
@@ -72,7 +72,7 @@ def auto_connect() -> None:
             "the 'new_connection' function or set manually a connection"
             " using the 'set_connection' function."
         )
-    connect(section)
+    connect(section, database = database)
 
 
 read_auto_connect = auto_connect
@@ -128,7 +128,6 @@ def connect(section: str, dsn: Optional[str] = None, database: Optional[str] = "
     prev_conn = gb_conn.get_connection()
     if not dsn:
         dsn = get_connection_file()
-    print("DATABASE is.....", database)
     if prev_conn and not check_closed(prev_conn, database):
     # if prev_conn and not (callable(prev_conn.closed) and prev_conn.closed()):
         prev_conn.close()
@@ -147,14 +146,12 @@ def connect(section: str, dsn: Optional[str] = None, database: Optional[str] = "
                 conn = read_dsn(section, dsn)#.pop("session_label")
                 del conn["session_label"] # ideally these things should be dealt with while writing
                 del conn["unicode_error"]
-                print(conn)
                 gb_conn.set_connection(psycopg2.connect(**conn), database = "postgres")
                 gb_conn.get_connection().cursor().execute("commit") # For some reason, we need a commit before doing anything with this.
             if database == "clickhouse":
                 conn = read_dsn(section, dsn)#.pop("session_label")
                 del conn["session_label"] # ideally these things should be dealt with while writing
                 del conn["unicode_error"]
-                print(conn)
                 gb_conn.set_connection(clickhouse_driver.connect(**conn), database = "clickhouse")
             else:
                 gb_conn.set_connection(vertica_connection(section, dsn), section, dsn)
@@ -391,16 +388,14 @@ def current_connection() -> GlobalConnection:
         else:
             try:
                 # Connection using the Auto Connection
-
                 auto_connect()
 
             except Exception as e:
                 try:
                     # Connection to the VerticaLab environment
-
                     conn = verticapylab_connection()
                     gb_conn.set_connection(conn)
-
+                    
                 except:
                     raise e
 
