@@ -239,7 +239,7 @@ class TableSample:
                 formatted_text += f"Rows: {rows} | Columns: {n}"
         return formatted_text
 
-    def _repr_html_(self, interactive: bool = False) -> str:
+    def _repr_html_(self, interactive: bool = False, checkboxes: bool = False) -> str:
         if len(self.values) == 0:
             return ""
         n = len(self.values)
@@ -265,6 +265,14 @@ class TableSample:
             if elem not in percent and (elem != "index"):
                 percent = {}
                 break
+
+        # Add checkboxes to the data columns if the checkboxes parameter is True
+        if checkboxes:
+            checkbox_column = ['<input type="checkbox" class="row-checkbox">'] * (len(data_columns[0]) - 1)
+            checkbox_column.insert(0, "Select")
+            data_columns.insert(0, checkbox_column)
+            dtype["Select"] = "checkbox"
+
         formatted_text = ""
         # get interactive table if condition true
         if conf.get_option("interactive") or interactive:
@@ -284,6 +292,7 @@ class TableSample:
                 dtype=dtype,
                 percent=percent,
             )
+        
         if conf.get_option("footer_on"):
             formatted_text += '<div style="margin-top:6px; font-size:1.02em">'
             if (self.offset == 0) and (len(data_columns[0]) - 1 == self.count):
@@ -313,7 +322,43 @@ class TableSample:
                 else:
                     formatted_text += f"<b>Rows:</b> {rows} | <b>Columns:</b> {n}"
             formatted_text += "</div>"
+
+        # # Add JavaScript to capture checkbox states if checkboxes are included
+        # if checkboxes:
+        #     formatted_text += """
+        #    <script>
+        #     function getCheckedRows() {
+        #         let checkboxes = document.querySelectorAll('.row-checkbox');
+        #         let checkedRows = [];
+        #         checkboxes.forEach((checkbox, index) => {
+        #             if (checkbox.checked) {
+        #                 checkedRows.push(index);
+        #             }
+        #         });
+        #         console.log(checkedRows);
+        #         return checkedRows;
+        #     }
+
+        #     // Function to get the checkbox states and store in a global variable
+        #     function collectCheckboxStates() {
+        #         let checkboxes = document.querySelectorAll('.row-checkbox');
+        #         let checkboxStates = [];
+        #         checkboxes.forEach((checkbox) => {
+        #             checkboxStates.push(checkbox.checked);
+        #         });
+        #         window.checkboxStates = checkboxStates;
+        #     }
+
+        #     // Collect the checkbox states on page load and whenever a checkbox is clicked
+        #     document.addEventListener('DOMContentLoaded', collectCheckboxStates);
+        #     document.querySelectorAll('.row-checkbox').forEach((checkbox) => {
+        #         checkbox.addEventListener('change', collectCheckboxStates);
+        #     });
+        #     </script>
+        #     """
+
         return formatted_text
+
 
     def _get_correct_format_and_cast(self, val: Any) -> str:
         """

@@ -125,8 +125,8 @@ class vDFRead(vDFUtils):
     def __repr__(self) -> str:
         return self._repr_object().__repr__()
 
-    def _repr_html_(self, interactive: bool = False) -> str:
-        return self._repr_object()._repr_html_(interactive)
+    def _repr_html_(self, interactive: bool = False, checkboxes: bool = False) -> str:
+        return self._repr_object()._repr_html_(interactive = interactive, checkboxes = checkboxes)
 
     def _repr_object(self, interactive: bool = False) -> TableSample:
         if 0 < self._vars["sql_magic_result"] < 3:
@@ -177,13 +177,13 @@ class vDFRead(vDFUtils):
                 cols = colums[:s] + colums[-s:]
         return self.iloc(limit=max_rows, columns=cols)
 
-    def idisplay(self) -> None:
+    def idisplay(self, checkboxes: bool = False) -> None:
         """
         This  method  displays  the interactive  table.
         It is used  when you don't want to activate
         interactive tables for all :py:class:`~vDataFrame`.
         """
-        return display(HTML(self.copy()._repr_html_(interactive=True)))
+        return display(HTML(self.copy()._repr_html_(interactive=True, checkboxes = checkboxes)))
 
     def get_columns(self, exclude_columns: Optional[SQLColumns] = None) -> list[str]:
         """
