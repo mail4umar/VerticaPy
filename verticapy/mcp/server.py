@@ -66,43 +66,96 @@ async def connect_to_vertica() -> str:
         return f"Error connecting to database: {str(e)}"
 
 @mcp.tool()
-async def create_dataframe(data_dict: str) -> str:
-    """Create a VerticaPy vDataFrame from a dictionary of data.
+async def create_dataframe(data_dict: str,
+                           name: str = None,
+                           relation_type: str = "view",
+                           usecols: list = None,
+                           overwrite: bool = False) -> str:
+    """Create a VerticaPy vDataFrame from a dictionary of data and optionally store it in the database.
     
     Args:
         data_dict: JSON string representation of dictionary containing column data
-                  Example: '{"y_true": [1, 1.5, 3, 2, 5], "y_pred": [1.1, 1.55, 2.9, 2.01, 4.5]}'
+        name: Optional fully qualified name (e.g. '"public"."mytable"') to save in database
+        relation_type: Relation type ("view", "temporary", "table", "local", "insert")
+        usecols: Optional list of columns to save
+        overwrite: If True, overwrite the existing table/view if it already exists
     
     Returns:
-        String representation of the created dataframe with basic info
+        Information about the created dataframe and (if applicable) storage result
     """
     try:
-        # Ensure we're connected
+        # Ensure connection
         if not connection_manager.ensure_connected():
             return "Error: Could not establish database connection"
         
-        # Parse the JSON data
+        # Parse JSON
         try:
             data = json.loads(data_dict)
         except json.JSONDecodeError as e:
             return f"Error parsing JSON data: {str(e)}"
         
-        # Create the vDataFrame
+        # Create vDataFrame
         df = vp.vDataFrame(data)
-        
-        # Return basic information about the dataframe
-        info = []
-        info.append(f"Created vDataFrame with shape: {df.shape()}")
+        info = [f"Created vDataFrame with shape: {df.shape()}"]
         info.append(f"Columns: {df.get_columns()}")
         
-        # Get first few rows as string representation
+        # Store to DB if requested
+        if name:
+            try:
+                df.to_db(
+                    name=name,
+                    usecols=usecols,
+                    relation_type=relation_type,
+                    inplace=overwrite,   # key part
+                )
+                action = "Overwritten" if overwrite else "Saved"
+                info.append(f"{action} vDataFrame in database as {name} ({relation_type})")
+            except Exception as e:
+                err_str = str(e)
+                if "already exists" in err_str or "DuplicateObject" in err_str:
+                    if overwrite:
+                        info.append(f"Attempted overwrite failed: {err_str}")
+                    else:
+                        info.append(f"Table/View {name} already exists. Use overwrite=True to replace it.")
+                else:
+                    info.append(f"Error saving to database: {err_str}")
+        
+        # Show preview
         head_data = df.head(5)
         info.append(f"First 5 rows:\n{head_data}")
         
         return "\n".join(info)
-        
     except Exception as e:
         return f"Error creating dataframe: {str(e)}"
+
+
+@mcp.tool()
+async def fetch_dataframe(table_name: str) -> str:
+    """Fetch a VerticaPy vDataFrame from the database by table name.
+    
+    Args:
+        table_name: Fully qualified table/view name (e.g. '"public"."data_normalized"')
+    
+    Returns:
+        Information about the dataframe (shape, columns, preview)
+    """
+    try:
+        if not connection_manager.ensure_connected():
+            return "Error: Could not establish database connection"
+        
+        df = vp.vDataFrame(table_name)
+        info = []
+        info.append(f"Fetched vDataFrame from {table_name}")
+        info.append(f"Shape: {df.shape()}")
+        info.append(f"Columns: {df.get_columns()}")
+        info.append(f"Data types: {df.dtypes()}")
+        head_data = df.head(5)
+        info.append(f"First 5 rows:\n{head_data}")
+        
+        return "\n".join(info)
+    except Exception as e:
+        return f"Error fetching dataframe: {str(e)}"
+
 
 @mcp.tool()
 async def get_dataframe_info(table_name: str = None) -> str:
