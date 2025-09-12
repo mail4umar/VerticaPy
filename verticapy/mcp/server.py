@@ -128,6 +128,31 @@ async def create_dataframe(data_dict: str,
     except Exception as e:
         return f"Error creating dataframe: {str(e)}"
 
+@mcp.tool()
+async def summarize_dataframe(table_name: str) -> str:
+    """Summarize a vDataFrame by computing descriptive statistics.
+    
+    Args:
+        table_name: Fully qualified table/view name (e.g. '"public"."cool"')
+    
+    Returns:
+        JSON string with statistical summary of columns
+    """
+    try:
+        if not connection_manager.ensure_connected():
+            return "Error: Could not establish database connection"
+        
+        # Load the vDataFrame
+        vdf = vp.vDataFrame(table_name)
+        
+        # Compute summary statistics
+        summary = vdf.describe().values
+        
+        # Return JSON string
+        return json.dumps(summary, indent=2)
+    except Exception as e:
+        return f"Error summarizing dataframe: {str(e)}"
+
 
 @mcp.tool()
 async def fetch_dataframe(table_name: str) -> str:
