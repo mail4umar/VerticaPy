@@ -2,6 +2,8 @@
 
 from mcp.server.fastmcp import FastMCP
 import verticapy as vp
+from verticapy._utils._sql._sys import _executeSQL
+from connection import VerticaPyConnection
 
 # Initialize FastMCP server
 mcp = FastMCP("verticapy")
@@ -9,68 +11,6 @@ mcp = FastMCP("verticapy")
 # -----------------------------
 # Connection setup (run once)
 # -----------------------------
-CONN_INFO = {
-    "host": "10.10.10.235",
-    "port": "34101",
-    "database": "verticadb21477",
-    "password": "",
-    "user": "ughumman",
-}
-
-class VerticaPyConnection:
-    """Manages VerticaPy database connections."""
-    
-    def __init__(self):
-        self.is_connected = False
-        self.connection_name = "VerticaDSN"
-    
-    def connect(self) -> tuple[bool, str]:
-        """Establish connection to Vertica database."""
-        try:
-            vp.new_connection(
-                CONN_INFO,
-                name=self.connection_name,
-                auto=True,
-                overwrite=True,
-            )
-            self.is_connected = True
-            return True, "Successfully connected to Vertica database"
-        except Exception as e:
-            error_msg = f"Connection failed: {str(e)}"
-            print(error_msg)
-            self.is_connected = False
-            return False, error_msg
-    
-    def ensure_connected(self) -> tuple[bool, str]:
-        """Ensure we have an active connection."""
-        if not self.is_connected:
-            return self.connect()
-        return True, "Already connected"
-    
-    def disconnect(self) -> tuple[bool, str]:
-        """Disconnect from Vertica database."""
-        try:
-            if self.is_connected:
-                vp.close_connection(self.connection_name)
-                self.is_connected = False
-                return True, "Successfully disconnected from Vertica database"
-            else:
-                return True, "Already disconnected"
-        except Exception as e:
-            error_msg = f"Disconnect failed: {str(e)}"
-            print(error_msg)
-            return False, error_msg
-    
-    def get_connection_status(self) -> dict:
-        """Get current connection status and info."""
-        return {
-            "is_connected": self.is_connected,
-            "connection_name": self.connection_name,
-            "host": CONN_INFO["host"],
-            "port": CONN_INFO["port"],
-            "database": CONN_INFO["database"],
-            "user": CONN_INFO["user"]
-        }
 
 # Global connection manager
 connection_manager = VerticaPyConnection()
@@ -146,9 +86,175 @@ def get_connection_status() -> dict:
 # Data Exploration Tools
 # -----------------------------
 @mcp.tool()
-def list_tables(schema: str = "public"):
-    """List tables in the given schema."""
-    return {"tables": ["placeholder_table1", "placeholder_table2"]}
+def list_tables(schema: str = "public") -> dict:
+    """
+    List all tables in the specified schema.
+    
+    Args:
+        schema (str): Schema name to list tables from. Defaults to "public".
+    
+    Returns:
+        dict: Dictionary containing tables list, count, and metadata
+    """
+    try:
+        # Ensure we have an active connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {
+                "success": False,
+                "error": f"Connection failed: {message}",
+                "tables": [],
+                "count": 0
+            }
+        
+        # Method 1: Using VerticaPy's built-in function (preferred)
+        try:
+            # This uses vp.get_data_types() internally but filters for tables
+            tables_info = vp.get_data_types(schema_name=schema, table_name='*')
+            
+            # Extract unique table names
+            table_names = []
+            if tables_info:
+                # tables_info is usually a list of tuples: (schema, table, column, type, ...)
+                table_names = list(set([row[1] for row in tables_info if row[0].lower() == schema.lower()]))
+                table_names.sort()
+            
+            return {
+                "success": True,
+                "schema": schema,
+                "tables": table_names,
+                "count": len(table_names),
+                "method": "verticapy_builtin"
+            }
+            
+        except Exception as builtin_error:
+            # Method 2: Fallback to direct SQL query
+            try:
+                sql_query = """
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = ? 
+                AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+                """
+                
+                result = _executeSQL(
+                    query=sql_query,
+                    parameters=[schema],
+                    method="fetchall"
+                )
+                
+                table_names = [row[0] for row in result]
+                
+                return {
+                    "success": True,
+                    "schema": schema,
+                    "tables": table_names,
+                    "count": len(table_names),
+                    "method": "direct_sql",
+                    "warning": f"Used fallback method due to: {str(builtin_error)}"
+                }
+                
+            except Exception as sql_error:
+                # Method 3: Alternative SQL approach
+                try:
+                    alt_query = f"""
+                    SELECT table_name 
+                    FROM v_catalog.tables 
+                    WHERE table_schema = '{schema}' 
+                    ORDER BY table_name
+                    """
+                    
+                    result = _executeSQL(
+                        query=alt_query,
+                        method="fetchall"
+                    )
+                    
+                    table_names = [row[0] for row in result]
+                    
+                    return {
+                        "success": True,
+                        "schema": schema,
+                        "tables": table_names,
+                        "count": len(table_names),
+                        "method": "v_catalog",
+                        "warning": f"Used alternative method due to previous errors"
+                    }
+                    
+                except Exception as final_error:
+                    return {
+                        "success": False,
+                        "error": f"All methods failed. Last error: {str(final_error)}",
+                        "schema": schema,
+                        "tables": [],
+                        "count": 0,
+                        "attempted_methods": ["verticapy_builtin", "direct_sql", "v_catalog"]
+                    }
+                    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "schema": schema,
+            "tables": [],
+            "count": 0
+        }
+
+@mcp.tool()
+def list_all_schemas() -> dict:
+    """
+    List all available schemas in the database.
+    
+    Returns:
+        dict: Dictionary containing schemas list and count
+    """
+    try:
+        # Ensure we have an active connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {
+                "success": False,
+                "error": f"Connection failed: {message}",
+                "schemas": [],
+                "count": 0
+            }
+        
+        try:
+            # Query to get all schemas
+            sql_query = """
+            SELECT schema_name 
+            FROM information_schema.schemata 
+            ORDER BY schema_name
+            """
+            
+            result = _executeSQL(
+                query=sql_query,
+                method="fetchall"
+            )
+            
+            schema_names = [row[0] for row in result]
+            
+            return {
+                "success": True,
+                "schemas": schema_names,
+                "count": len(schema_names)
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to retrieve schemas: {str(e)}",
+                "schemas": [],
+                "count": 0
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "schemas": [],
+            "count": 0
+        }
 
 @mcp.tool()
 def describe_table(table: str):
