@@ -1,6 +1,7 @@
 # server.py
 
 from mcp.server.fastmcp import FastMCP
+import verticapy as vp
 
 # Initialize FastMCP server
 mcp = FastMCP("verticapy")
@@ -23,7 +24,7 @@ class VerticaPyConnection:
         self.is_connected = False
         self.connection_name = "VerticaDSN"
     
-    def connect(self) -> bool:
+    def connect(self) -> tuple[bool, str]:
         """Establish connection to Vertica database."""
         try:
             vp.new_connection(
@@ -33,28 +34,112 @@ class VerticaPyConnection:
                 overwrite=True,
             )
             self.is_connected = True
-            return True
+            return True, "Successfully connected to Vertica database"
         except Exception as e:
-            print(f"Connection failed: {e}")
+            error_msg = f"Connection failed: {str(e)}"
+            print(error_msg)
             self.is_connected = False
-            return False
+            return False, error_msg
     
-    def ensure_connected(self) -> bool:
+    def ensure_connected(self) -> tuple[bool, str]:
         """Ensure we have an active connection."""
         if not self.is_connected:
             return self.connect()
-        return True
+        return True, "Already connected"
+    
+    def disconnect(self) -> tuple[bool, str]:
+        """Disconnect from Vertica database."""
+        try:
+            if self.is_connected:
+                vp.close_connection(self.connection_name)
+                self.is_connected = False
+                return True, "Successfully disconnected from Vertica database"
+            else:
+                return True, "Already disconnected"
+        except Exception as e:
+            error_msg = f"Disconnect failed: {str(e)}"
+            print(error_msg)
+            return False, error_msg
+    
+    def get_connection_status(self) -> dict:
+        """Get current connection status and info."""
+        return {
+            "is_connected": self.is_connected,
+            "connection_name": self.connection_name,
+            "host": CONN_INFO["host"],
+            "port": CONN_INFO["port"],
+            "database": CONN_INFO["database"],
+            "user": CONN_INFO["user"]
+        }
 
 # Global connection manager
 connection_manager = VerticaPyConnection()
 
 @mcp.tool()
-def connect_to_vertica():
+def connect_to_vertica() -> dict:
     """
-    Connect to Vertica using credentials stored in config/env.
-    Placeholder: implement vp.connect() here.
+    Connect to Vertica database using the configured credentials.
+    
+    Returns:
+        dict: Connection status with success/failure message and connection details
     """
-    return {"status": "success", "message": "Connected to Vertica (placeholder)"}
+    try:
+        success, message = connection_manager.connect()
+        
+        result = {
+            "success": success,
+            "message": message,
+            "connection_info": connection_manager.get_connection_status()
+        }
+        
+        if success:
+            # Test the connection by getting version info
+            try:
+                version_info = vp.version()
+                result["verticapy_version"] = version_info
+            except Exception as e:
+                result["warning"] = f"Connected but couldn't retrieve version info: {str(e)}"
+        
+        return result
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Unexpected error during connection: {str(e)}",
+            "connection_info": connection_manager.get_connection_status()
+        }
+
+@mcp.tool()
+def disconnect_from_vertica() -> dict:
+    """
+    Disconnect from Vertica database.
+    
+    Returns:
+        dict: Disconnection status with success/failure message
+    """
+    try:
+        success, message = connection_manager.disconnect()
+        return {
+            "success": success,
+            "message": message,
+            "connection_info": connection_manager.get_connection_status()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Unexpected error during disconnection: {str(e)}",
+            "connection_info": connection_manager.get_connection_status()
+        }
+
+@mcp.tool()
+def get_connection_status() -> dict:
+    """
+    Get current connection status and details.
+    
+    Returns:
+        dict: Current connection status and configuration details
+    """
+    return connection_manager.get_connection_status()
 
 
 # -----------------------------
