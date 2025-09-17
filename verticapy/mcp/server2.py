@@ -257,15 +257,248 @@ def list_all_schemas() -> dict:
         }
 
 @mcp.tool()
-def describe_table(table: str):
-    """Describe schema of a table."""
-    return {"table": table, "columns": ["col1", "col2"]}
-
+def describe_table(table: str) -> dict:
+    """
+    Describe schema of a table using VerticaPy vDataFrame.
+    
+    Args:
+        table (str): Table name to describe. Can be schema.table or just table name.
+    
+    Returns:
+        dict: Dictionary containing table schema information including columns, types, and basic stats.
+    """
+    try:
+        # Ensure we have an active connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {
+                "success": False,
+                "error": f"Connection failed: {message}",
+                "table": table
+            }
+        
+        # Create vDataFrame from table
+        try:
+            vdf = vp.vDataFrame(table)
+            
+            # Get basic information
+            columns = vdf.get_columns()
+            dtypes_info = vdf.dtypes()
+            shape = vdf.shape()
+            
+            # Get detailed column information with data types
+            column_details = []
+            for col in columns:
+                col_clean = col.strip('"')  # Remove quotes from column names
+                try:
+                    # Get data type for this column
+                    col_dtype = dtypes_info.get(col, "unknown")
+                    
+                    column_details.append({
+                        "column_name": col_clean,
+                        "data_type": str(col_dtype),
+                        "quoted_name": col  # Keep original quoted name if needed
+                    })
+                except Exception as col_error:
+                    # If we can't get dtype for a specific column, still include it
+                    column_details.append({
+                        "column_name": col_clean,
+                        "data_type": "unknown",
+                        "quoted_name": col,
+                        "error": str(col_error)
+                    })
+            
+            # Try to get additional table information
+            table_info = {}
+            try:
+                # Get basic statistics if the table is not too large
+                if shape[0] < 1000000:  # Only for tables with less than 1M rows
+                    describe_df = vdf.describe()
+                    table_info["has_statistics"] = True
+                    table_info["describe_available"] = True
+                else:
+                    table_info["has_statistics"] = False
+                    table_info["describe_available"] = False
+                    table_info["note"] = "Statistics skipped for large table"
+            except Exception:
+                table_info["has_statistics"] = False
+                table_info["describe_available"] = False
+            
+            return {
+                "success": True,
+                "table": table,
+                "columns": column_details,
+                "column_count": len(columns),
+                "row_count": shape[0],
+                "shape": {"rows": shape[0], "columns": shape[1]},
+                "dtypes": dtypes_info,
+                "table_info": table_info,
+                "method": "verticapy_vdataframe"
+            }
+            
+        except Exception as vdf_error:
+            # If vDataFrame creation fails, the table might not exist or we don't have access
+            error_msg = str(vdf_error)
+            
+            # Check if it's a "relation does not exist" error
+            if "does not exist" in error_msg.lower() or "relation" in error_msg.lower():
+                return {
+                    "success": False,
+                    "error": f"Table '{table}' does not exist or is not accessible",
+                    "table": table,
+                    "detailed_error": error_msg
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to create vDataFrame for table '{table}': {error_msg}",
+                    "table": table,
+                    "detailed_error": error_msg
+                }
+                
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "table": table
+        }
+    
 @mcp.tool()
-def sample_data(table: str, n: int = 5):
-    """Return sample rows from a table."""
-    return {"table": table, "rows": ["row1", "row2", "..."]}
-
+def sample_data(table: str, n: int = 5) -> dict:
+    """
+    Return sample rows from a table using VerticaPy vDataFrame.
+    
+    Args:
+        table (str): Table name to sample from. Can be schema.table or just table name.
+        n (int): Number of rows to sample. Defaults to 5.
+    
+    Returns:
+        dict: Dictionary containing sampled data, columns, and metadata.
+    """
+    try:
+        # Ensure we have an active connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {
+                "success": False,
+                "error": f"Connection failed: {message}",
+                "table": table,
+                "data": []
+            }
+        
+        # Create vDataFrame from table
+        try:
+            vdf = vp.vDataFrame(table)
+            
+            # Get basic info
+            shape = vdf.shape()
+            columns = vdf.get_columns()
+            
+            # Determine sampling method based on table size and requested sample size
+            if n >= shape[0]:
+                # If we want more rows than exist, just get all rows
+                sample_vdf = vdf.head(shape[0])
+                sampling_method = "head_all_rows"
+            elif n <= 10:
+                # For small samples, use head() for consistency
+                sample_vdf = vdf.head(n)
+                sampling_method = "head"
+            else:
+                # For larger samples, use random sampling
+                try:
+                    sample_vdf = vdf.sample(n=n, method="random")
+                    sampling_method = "random"
+                except Exception:
+                    # Fallback to head if sampling fails
+                    sample_vdf = vdf.head(n)
+                    sampling_method = "head_fallback"
+            
+            # Convert to pandas for easy JSON serialization
+            try:
+                pandas_df = sample_vdf.to_pandas()
+                
+                # Convert to JSON-serializable format
+                data_records = pandas_df.to_dict('records')
+                
+                # Clean up column names (remove quotes)
+                clean_columns = [col.strip('"') for col in columns]
+                
+                return {
+                    "success": True,
+                    "table": table,
+                    "columns": clean_columns,
+                    "data": data_records,
+                    "sample_size": len(data_records),
+                    "requested_size": n,
+                    "total_rows": shape[0],
+                    "total_columns": shape[1],
+                    "sampling_method": sampling_method,
+                    "method": "verticapy_vdataframe"
+                }
+                
+            except Exception as pandas_error:
+                # If pandas conversion fails, try to get data as list
+                try:
+                    # Get data as lists
+                    data_list = sample_vdf.to_list()
+                    
+                    # Create records manually
+                    clean_columns = [col.strip('"') for col in columns]
+                    data_records = []
+                    
+                    for row in data_list:
+                        if len(row) == len(clean_columns):
+                            record = dict(zip(clean_columns, row))
+                            data_records.append(record)
+                    
+                    return {
+                        "success": True,
+                        "table": table,
+                        "columns": clean_columns,
+                        "data": data_records,
+                        "sample_size": len(data_records),
+                        "requested_size": n,
+                        "total_rows": shape[0],
+                        "total_columns": shape[1],
+                        "sampling_method": sampling_method,
+                        "method": "verticapy_vdataframe_list",
+                        "warning": f"Used list conversion due to pandas error: {str(pandas_error)}"
+                    }
+                    
+                except Exception as list_error:
+                    return {
+                        "success": False,
+                        "error": f"Failed to convert sample data: pandas error: {str(pandas_error)}, list error: {str(list_error)}",
+                        "table": table,
+                        "data": []
+                    }
+            
+        except Exception as vdf_error:
+            error_msg = str(vdf_error)
+            
+            if "does not exist" in error_msg.lower() or "relation" in error_msg.lower():
+                return {
+                    "success": False,
+                    "error": f"Table '{table}' does not exist or is not accessible",
+                    "table": table,
+                    "data": []
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Failed to create vDataFrame for table '{table}': {error_msg}",
+                    "table": table,
+                    "data": []
+                }
+                
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "table": table,
+            "data": []
+        }
+    
 @mcp.tool()
 def summary_stats(table: str, column: str):
     """Return basic statistics for a column."""
