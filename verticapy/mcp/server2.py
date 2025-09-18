@@ -447,9 +447,92 @@ def sample_data(table: str, n: int = 5) -> dict:
         }
     
 @mcp.tool()
-def summary_stats(table: str, column: str):
-    """Return basic statistics for a column."""
-    return {"table": table, "column": column, "mean": 0, "min": 0, "max": 0}
+def summary_stats_column(table: str, column: str) -> dict:
+    """
+    Return summary statistics for a given column in a table using VerticaPy.
+    
+    Args:
+        table (str): Table name (schema.table or table).
+        column (str): Column name.
+    
+    Returns:
+        dict: Dictionary of summary stats, including counts, averages, quantiles,
+              top-k values, and extremes.
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        vdf = vp.vDataFrame(table)
+        
+        # Ensure column exists
+        if column not in [c.strip('"') for c in vdf.get_columns()]:
+            return {"success": False, "error": f"Column '{column}' not found in table '{table}'"}
+        
+        col = vdf[column]
+        
+        result = {}
+        
+        # High-level summary (describe)
+        try:
+            result["describe"] = col.describe().values
+        except Exception:
+            result["describe"] = {}
+        
+        # Basic aggregations
+        try:
+            result["basic"] = {
+                "count": col.count(),
+                "nunique": col.nunique(),
+                "sum": col.sum(),
+                "avg": col.avg(),
+                "std": col.std(),
+                "var": col.var(),
+                "min": col.min(),
+                "median": col.median(),
+                "max": col.max(),
+                "mode": col.mode()
+            }
+        except Exception as e:
+            result["basic"] = {"error": str(e)}
+        
+        # Top-k frequent values
+        try:
+            result["topk"] = col.topk(3).values
+        except Exception:
+            result["topk"] = {}
+        
+        # Quantiles
+        try:
+            result["quantiles"] = col.aggregate(
+                func=["min", "approx_10%", "approx_50%", "approx_90%", "max"]
+            ).values
+        except Exception:
+            result["quantiles"] = {}
+        
+        # Sample extremes
+        try:
+            result["nlargest"] = col.nlargest(5).values
+        except Exception:
+            result["nlargest"] = {}
+        
+        try:
+            result["nsmallest"] = col.nsmallest(5).values
+        except Exception:
+            result["nsmallest"] = {}
+        
+        return {
+            "success": True,
+            "table": table,
+            "column": column,
+            "summary": result,
+            "method": "vDataColumn stats"
+        }
+    
+    except Exception as e:
+        return {"success": False, "error": str(e), "table": table, "column": column}
 
 
 # -----------------------------
