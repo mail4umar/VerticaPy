@@ -20,12 +20,13 @@ CONN_INFO = {
     "user": "ughumman",
 }
 
+# To connect to Docker Vertica CE from windows
 CONN_INFO = {
    "host": "127.0.0.1",      # or "host.docker.internal" if using Docker Desktop
    "port": 5433,
-   "database": "demo",       # or your created DB like "verticadb21477"
+   "database": "demo",
    "user": "dbadmin",
-   "password": "",            # if no password set
+   "password": "",
    "tls_verify": False
 }
 

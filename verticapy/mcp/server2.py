@@ -259,109 +259,56 @@ def list_all_schemas() -> dict:
 @mcp.tool()
 def describe_table(table: str) -> dict:
     """
-    Describe schema of a table using VerticaPy vDataFrame.
+    Describe a table using VerticaPy vDataFrame.
+    Includes row count, column names + types, and stats for numeric columns.
     
     Args:
         table (str): Table name to describe. Can be schema.table or just table name.
     
     Returns:
-        dict: Dictionary containing table schema information including columns, types, and basic stats.
+        dict: Dictionary with row count, columns info, and numeric stats.
     """
     try:
-        # Ensure we have an active connection
+        # Ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
-            return {
-                "success": False,
-                "error": f"Connection failed: {message}",
-                "table": table
-            }
+            return {"success": False, "error": f"Connection failed: {message}"}
         
-        # Create vDataFrame from table
-        try:
-            vdf = vp.vDataFrame(table)
-            
-            # Get basic information
-            columns = vdf.get_columns()
-            dtypes_info = vdf.dtypes()
-            shape = vdf.shape()
-            
-            # Get detailed column information with data types
-            column_details = []
-            for col in columns:
-                col_clean = col.strip('"')  # Remove quotes from column names
-                try:
-                    # Get data type for this column
-                    col_dtype = dtypes_info.get(col, "unknown")
-                    
-                    column_details.append({
-                        "column_name": col_clean,
-                        "data_type": str(col_dtype),
-                        "quoted_name": col  # Keep original quoted name if needed
-                    })
-                except Exception as col_error:
-                    # If we can't get dtype for a specific column, still include it
-                    column_details.append({
-                        "column_name": col_clean,
-                        "data_type": "unknown",
-                        "quoted_name": col,
-                        "error": str(col_error)
-                    })
-            
-            # Try to get additional table information
-            table_info = {}
-            try:
-                # Get basic statistics if the table is not too large
-                if shape[0] < 1000000:  # Only for tables with less than 1M rows
-                    describe_df = vdf.describe()
-                    table_info["has_statistics"] = True
-                    table_info["describe_available"] = True
-                else:
-                    table_info["has_statistics"] = False
-                    table_info["describe_available"] = False
-                    table_info["note"] = "Statistics skipped for large table"
-            except Exception:
-                table_info["has_statistics"] = False
-                table_info["describe_available"] = False
-            
-            return {
-                "success": True,
-                "table": table,
-                "columns": column_details,
-                "column_count": len(columns),
-                "row_count": shape[0],
-                "shape": {"rows": shape[0], "columns": shape[1]},
-                "dtypes": dtypes_info,
-                "table_info": table_info,
-                "method": "verticapy_vdataframe"
-            }
-            
-        except Exception as vdf_error:
-            # If vDataFrame creation fails, the table might not exist or we don't have access
-            error_msg = str(vdf_error)
-            
-            # Check if it's a "relation does not exist" error
-            if "does not exist" in error_msg.lower() or "relation" in error_msg.lower():
-                return {
-                    "success": False,
-                    "error": f"Table '{table}' does not exist or is not accessible",
-                    "table": table,
-                    "detailed_error": error_msg
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": f"Failed to create vDataFrame for table '{table}': {error_msg}",
-                    "table": table,
-                    "detailed_error": error_msg
-                }
-                
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Unexpected error: {str(e)}",
-            "table": table
+        # Create vDataFrame
+        vdf = vp.vDataFrame(table)
+        
+        # Row/column counts
+        row_count, col_count = vdf.shape()
+        
+        # Column names + types
+        dtypes_info = vdf.dtypes()
+        column_details = {
+            "index": [col.strip('"') for col in dtypes_info.keys()],
+            "dtype": list(dtypes_info.values())
         }
+        
+        # Stats for numeric columns
+        stats = {}
+        try:
+            stats = vdf.describe().values
+            stats["index"] = [col.strip('"') for col in stats["index"]]
+        except Exception:
+            # Some tables may not have numerical columns
+            stats = {}
+        
+        return {
+            "success": True,
+            "table": table,
+            "row_count": row_count,
+            "column_count": col_count,
+            "columns": column_details,
+            "stats": stats,
+            "method": "vdf.describe().values + vdf.dtypes()"
+        }
+    
+    except Exception as e:
+        return {"success": False, "error": str(e), "table": table}
+
     
 @mcp.tool()
 def sample_data(table: str, n: int = 5) -> dict:
