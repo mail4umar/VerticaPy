@@ -849,7 +849,7 @@ def transform_data(
             - "groupby": Group data and aggregate
             - "join": Join with another table
             - "pivot": Create pivot table
-            - "filter": Filter rows based on conditions
+            - "search": Search/filter rows based on conditions
             - "select": Select specific columns
             - "sort": Sort data
         vdf_id (str, optional): Unique ID to store the result vDataFrame for later use
@@ -859,27 +859,39 @@ def transform_data(
         
         For groupby:
             - columns (list): Columns to group by
-            - expr (list): Aggregation expressions, e.g., ["sum(revenue) AS daily_total"]
+            - expr (list, optional): Aggregation expressions, e.g., ["sum(revenue) AS daily_total"]
+            - rollup (bool or list, optional): Whether to use ROLLUP (default: False)
+            - having (str, optional): HAVING clause condition
         
         For join:
             - right_table (str): Table or vdf_id to join with
-            - on (str or list): Join condition(s)
-            - how (str): Join type ("inner", "left", "right", "full")
+            - on (tuple/dict/list, optional): Join condition(s)
+            - on_interpolate (dict, optional): Interpolation conditions
+            - how (str): Join type ("left", "right", "cross", "full", "natural", "self", "inner", default: "natural")
+            - expr1 (str/list, optional): Expressions for left table
+            - expr2 (str/list, optional): Expressions for right table
         
         For pivot:
-            - columns (list): Columns to pivot on
-            - values (str): Column containing values
-            - aggfunc (str): Aggregation function (default: "sum")
+            - index (str): Column to use as index
+            - columns (str): Column to pivot on
+            - values (str): Column containing values to aggregate
+            - aggr (str): Aggregation function (default: "sum")
+            - prefix (str, optional): Prefix for new column names
         
-        For filter:
-            - condition (str): SQL WHERE condition
+        For search:
+            - conditions (str): SQL WHERE conditions
+            - usecols (str/list, optional): Columns to include in result
+            - expr (str/list, optional): Additional expressions
+            - order_by (str/dict/list, optional): Ordering specification
         
         For select:
             - columns (list): Columns to select
         
         For sort:
-            - columns (list): Columns to sort by
-            - ascending (bool or list): Sort order (default: True)
+            - columns (dict/str/list): Sort specification
+              - Dict format: {"column": "asc"/"desc"}
+              - String/list with ascending param for backward compatibility
+            - ascending (bool/list, optional): Sort order when using string/list format (default: True)
     
     Returns:
         dict: Transformation result with preview data and vdf_id for reuse
@@ -913,6 +925,8 @@ def transform_data(
             if operation == "groupby":
                 columns = kwargs.get("columns", [])
                 expr = kwargs.get("expr", [])
+                rollup = kwargs.get("rollup", False)
+                having = kwargs.get("having", None)
                 
                 if not columns:
                     return {
@@ -920,60 +934,69 @@ def transform_data(
                         "error": "groupby operation requires 'columns' parameter"
                     }
                 
-                if not expr:
-                    return {
-                        "success": False,
-                        "error": "groupby operation requires 'expr' parameter with aggregation expressions"
-                    }
-                
-                result_vdf = source_vdf.groupby(columns=columns, expr=expr)
-                operation_info = f"groupby(columns={columns}, expr={expr})"
+                result_vdf = source_vdf.groupby(columns=columns, expr=expr, rollup=rollup, having=having)
+                operation_info = f"groupby(columns={columns}, expr={expr}, rollup={rollup}, having={having})"
             
             elif operation == "join":
-                right_table = kwargs.get("right_table")
-                on = kwargs.get("on")
-                how = kwargs.get("how", "inner")
+                input_relation = kwargs.get("right_table")
+                on = kwargs.get("on", None)
+                on_interpolate = kwargs.get("on_interpolate", None)
+                how = kwargs.get("how", "natural")
+                expr1 = kwargs.get("expr1", None)
+                expr2 = kwargs.get("expr2", None)
                 
-                if not right_table or not on:
+                if not input_relation:
                     return {
                         "success": False,
-                        "error": "join operation requires 'right_table' and 'on' parameters"
+                        "error": "join operation requires 'right_table' parameter"
                     }
                 
                 # Get right vDataFrame
-                if right_table in _vdf_cache:
-                    right_vdf = _vdf_cache[right_table]
+                if input_relation in _vdf_cache:
+                    right_vdf = _vdf_cache[input_relation]
                 else:
-                    right_vdf = vp.vDataFrame(right_table)
+                    right_vdf = vp.vDataFrame(input_relation)
                 
-                result_vdf = source_vdf.join(right_vdf, on=on, how=how)
-                operation_info = f"join(right_table={right_table}, on={on}, how={how})"
+                result_vdf = source_vdf.join(
+                    input_relation=right_vdf, 
+                    on=on, 
+                    on_interpolate=on_interpolate,
+                    how=how, 
+                    expr1=expr1, 
+                    expr2=expr2
+                )
+                operation_info = f"join(input_relation={input_relation}, on={on}, how={how}, expr1={expr1}, expr2={expr2})"
             
             elif operation == "pivot":
-                columns = kwargs.get("columns", [])
+                index = kwargs.get("index")
+                columns = kwargs.get("columns")
                 values = kwargs.get("values")
-                aggfunc = kwargs.get("aggfunc", "sum")
+                aggr = kwargs.get("aggr", "sum")
+                prefix = kwargs.get("prefix", None)
                 
-                if not columns or not values:
+                if not index or not columns or not values:
                     return {
                         "success": False,
-                        "error": "pivot operation requires 'columns' and 'values' parameters"
+                        "error": "pivot operation requires 'index', 'columns', and 'values' parameters"
                     }
                 
-                result_vdf = source_vdf.pivot(columns=columns, values=values, aggfunc=aggfunc)
-                operation_info = f"pivot(columns={columns}, values={values}, aggfunc={aggfunc})"
+                result_vdf = source_vdf.pivot(index=index, columns=columns, values=values, aggr=aggr, prefix=prefix)
+                operation_info = f"pivot(index={index}, columns={columns}, values={values}, aggr={aggr}, prefix={prefix})"
             
-            elif operation == "filter":
-                condition = kwargs.get("condition")
+            elif operation == "search":
+                conditions = kwargs.get("conditions", "")
+                usecols = kwargs.get("usecols", None)
+                expr = kwargs.get("expr", None)
+                order_by = kwargs.get("order_by", None)
                 
-                if not condition:
+                if not conditions:
                     return {
                         "success": False,
-                        "error": "filter operation requires 'condition' parameter"
+                        "error": "search operation requires 'conditions' parameter"
                     }
                 
-                result_vdf = source_vdf.filter(condition)
-                operation_info = f"filter(condition={condition})"
+                result_vdf = source_vdf.search(conditions=conditions, usecols=usecols, expr=expr, order_by=order_by)
+                operation_info = f"search(conditions={conditions}, usecols={usecols}, expr={expr}, order_by={order_by})"
             
             elif operation == "select":
                 columns = kwargs.get("columns", [])
@@ -988,8 +1011,7 @@ def transform_data(
                 operation_info = f"select(columns={columns})"
             
             elif operation == "sort":
-                columns = kwargs.get("columns", [])
-                ascending = kwargs.get("ascending", True)
+                columns = kwargs.get("columns")
                 
                 if not columns:
                     return {
@@ -997,13 +1019,28 @@ def transform_data(
                         "error": "sort operation requires 'columns' parameter"
                     }
                 
-                result_vdf = source_vdf.sort(columns, ascending=ascending)
-                operation_info = f"sort(columns={columns}, ascending={ascending})"
+                # Handle both dict format {"column": "asc"} and list/string format
+                if isinstance(columns, dict):
+                    result_vdf = source_vdf.sort(columns)
+                    operation_info = f"sort({columns})"
+                else:
+                    # For backward compatibility, convert to dict format if ascending is provided
+                    ascending = kwargs.get("ascending", True)
+                    if isinstance(columns, list):
+                        if isinstance(ascending, list):
+                            sort_dict = {col: "asc" if asc else "desc" for col, asc in zip(columns, ascending)}
+                        else:
+                            sort_dict = {col: "asc" if ascending else "desc" for col in columns}
+                    else:
+                        sort_dict = {columns: "asc" if ascending else "desc"}
+                    
+                    result_vdf = source_vdf.sort(sort_dict)
+                    operation_info = f"sort({sort_dict})"
             
             else:
                 return {
                     "success": False,
-                    "error": f"Unsupported operation '{operation}'. Supported: groupby, join, pivot, filter, select, sort"
+                    "error": f"Unsupported operation '{operation}'. Supported: groupby, join, pivot, search, select, sort"
                 }
         
         except Exception as op_error:
