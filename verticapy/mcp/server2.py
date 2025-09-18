@@ -1,9 +1,12 @@
 # server.py
 
 from mcp.server.fastmcp import FastMCP
+from typing import Any
 import verticapy as vp
+import numpy as np
 from verticapy._utils._sql._sys import _executeSQL
 from connection import VerticaPyConnection
+from verticapy.core.tablesample.base import TableSample
 
 # Initialize FastMCP server
 mcp = FastMCP("verticapy")
@@ -14,6 +17,65 @@ mcp = FastMCP("verticapy")
 
 # Global connection manager
 connection_manager = VerticaPyConnection()
+
+def _to_json_serializable(obj: Any):
+    """
+    Convert VerticaPy / Python objects into JSON-serializable primitives.
+    - Handles TableSample (uses .values)
+    - Handles dicts/lists recursively
+    - Handles numpy, Decimal, datetime
+    """
+    # None
+    if obj is None:
+        return None
+
+    # VerticaPy TableSample
+    if isinstance(obj, TableSample):
+        return _to_json_serializable(obj.values)
+
+    # dict
+    if isinstance(obj, dict):
+        return {str(k): _to_json_serializable(v) for k, v in obj.items()}
+
+    # list/tuple
+    if isinstance(obj, (list, tuple)):
+        return [_to_json_serializable(v) for v in obj]
+
+    # numpy array
+    if isinstance(obj, np.ndarray):
+        return _to_json_serializable(obj.tolist())
+
+    # numpy scalar types
+    if isinstance(obj, (np.integer, np.int_, np.int64)):
+        return int(obj)
+    if isinstance(obj, (np.floating, np.float_, np.float64)):
+        return float(obj)
+
+    # Decimal
+    if isinstance(obj, Decimal):
+        try:
+            f = float(obj)
+            return int(f) if f.is_integer() else f
+        except Exception:
+            return str(obj)
+
+    # datetime
+    if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+        return obj.isoformat()
+
+    # pandas / numpy scalars with .item()
+    try:
+        if hasattr(obj, "item"):
+            return _to_json_serializable(obj.item())
+    except Exception:
+        pass
+
+    # fallback for primitives
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+
+    # fallback to str
+    return str(obj)
 
 @mcp.tool()
 def connect_to_vertica() -> dict:
@@ -446,93 +508,159 @@ def sample_data(table: str, n: int = 5) -> dict:
             "data": []
         }
     
+# Supported metrics
+AVAILABLE_METRICS = [
+    "describe", "sum", "var", "std", "avg", "mean",
+    "count", "max", "min", "median", "mode", "nunique",
+    "topk", "nlargest", "nsmallest", "distinct", "aggregate"
+]
+
 @mcp.tool()
-def summary_stats_column(table: str, column: str) -> dict:
+def column_stats(table: str, column: str, metric: str = "describe", **kwargs) -> dict:
     """
-    Return summary statistics for a given column in a table using VerticaPy.
-    
+    MCP tool: return JSON-friendly statistics for a single column using VerticaPy vDataColumn.
+
     Args:
-        table (str): Table name (schema.table or table).
-        column (str): Column name.
-    
+        table (str): Table name
+        column (str): Column name
+        metric (str): One of:
+            describe, sum, var, std, avg, mean, count, max, min,
+            median, mode, nunique, topk, nlargest, nsmallest,
+            distinct, aggregate.
+
+        nlargest -> get the n highest values from the table based on the select column
+        nsmallest -> get the n lowest values from the table based on the select column
+        topk -> get the top k repeated values along with their percentage
+        nunique -> get the number of unique values in a column
+        
+        kwargs: Extra parameters, e.g.:
+            - topk: {"k": 5}
+            - nlargest: {"n": 5}
+            - nsmallest: {"n": 5}
+            - aggregate: {"func": ["min", "approx_50%", "max"]}
     Returns:
-        dict: Dictionary of summary stats, including counts, averages, quantiles,
-              top-k values, and extremes.
+        dict: { success: bool, table, column, metric, result: <json-serializable> | error }
     """
     try:
-        # Ensure connection
+        # validate metric
+        metric = (metric or "describe").lower()
+        if metric not in AVAILABLE_METRICS:
+            return {
+                "success": False,
+                "table": table,
+                "column": column,
+                "metric": metric,
+                "error": f"Unsupported metric '{metric}'. Choose from: {AVAILABLE_METRICS}"
+            }
+
+        # ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
-            return {"success": False, "error": f"Connection failed: {message}"}
-        
+            return {"success": False, "error": f"Connection failed: {message}", "table": table, "column": column}
+
+        # build vDataFrame
         vdf = vp.vDataFrame(table)
-        
-        # Ensure column exists
-        if column not in [c.strip('"') for c in vdf.get_columns()]:
-            return {"success": False, "error": f"Column '{column}' not found in table '{table}'"}
-        
-        col = vdf[column]
-        
-        result = {}
-        
-        # High-level summary (describe)
-        try:
-            result["describe"] = col.describe().values
-        except Exception:
-            result["describe"] = {}
-        
-        # Basic aggregations
-        try:
-            result["basic"] = {
-                "count": col.count(),
-                "nunique": col.nunique(),
-                "sum": col.sum(),
-                "avg": col.avg(),
-                "std": col.std(),
-                "var": col.var(),
-                "min": col.min(),
-                "median": col.median(),
-                "max": col.max(),
-                "mode": col.mode()
+
+        # resolve actual column name from vdf.get_columns() (handles quoted names)
+        available_cols = vdf.get_columns()  # e.g. ['"date"', '"unit_price"', ...]
+        # map to stripped names
+        stripped_map = {c.strip('"'): c for c in available_cols}
+        col_key = column.strip('"')
+        actual_col = stripped_map.get(col_key)
+        if actual_col is None:
+            # try case-insensitive match
+            for k, v in stripped_map.items():
+                if k.lower() == col_key.lower():
+                    actual_col = v
+                    break
+
+        if actual_col is None:
+            return {
+                "success": False,
+                "table": table,
+                "column": column,
+                "error": f"Column '{column}' not found. Available columns: {[_c for _c in available_cols]}"
             }
-        except Exception as e:
-            result["basic"] = {"error": str(e)}
-        
-        # Top-k frequent values
+        # access vDataColumn
+        col = vdf[actual_col]
+
+        # compute metric (selective)
         try:
-            result["topk"] = col.topk(3).values
-        except Exception:
-            result["topk"] = {}
-        
-        # Quantiles
-        try:
-            result["quantiles"] = col.aggregate(
-                func=["min", "approx_10%", "approx_50%", "approx_90%", "max"]
-            ).values
-        except Exception:
-            result["quantiles"] = {}
-        
-        # Sample extremes
-        try:
-            result["nlargest"] = col.nlargest(5).values
-        except Exception:
-            result["nlargest"] = {}
-        
-        try:
-            result["nsmallest"] = col.nsmallest(5).values
-        except Exception:
-            result["nsmallest"] = {}
-        
+            if metric == "describe":
+                raw = col.describe().values
+            elif metric in ("avg", "mean"):
+                # try avg(), fallback to mean()
+                if hasattr(col, "avg"):
+                    raw = col.avg()
+                elif hasattr(col, "mean"):
+                    raw = col.mean()
+                else:
+                    raise AttributeError("No mean/avg method available on vDataColumn")
+            elif metric == "sum":
+                raw = col.sum()
+            elif metric == "var":
+                raw = col.var()
+            elif metric == "std":
+                raw = col.std()
+            elif metric == "count":
+                raw = col.count()
+            elif metric == "max":
+                raw = col.max()
+            elif metric == "min":
+                raw = col.min()
+            elif metric == "median":
+                # some vDataColumn objects may have median()
+                if hasattr(col, "median"):
+                    raw = col.median()
+                else:
+                    # fallback to aggregate approx_50%
+                    raw = col.aggregate(func=["approx_50%"]).values
+            elif metric == "mode":
+                # mode may return a single value or list
+                raw = col.mode()
+            elif metric == "nunique":
+                raw = col.nunique()
+            elif metric == "topk":
+                k = int(kwargs.get("k", 3))
+                raw = col.topk(k).values
+            elif metric == "nlargest":
+                n = int(kwargs.get("n", 5))
+                raw = col.nlargest(n).values
+            elif metric == "nsmallest":
+                n = int(kwargs.get("n", 5))
+                raw = col.nsmallest(n).values
+            elif metric == "distinct":
+                # distinct returns an iterable/list of distinct values
+                raw = list(col.distinct())
+            elif metric == "aggregate":
+                func_list = kwargs.get("func", ["min", "approx_10%", "approx_50%", "approx_90%", "max"])
+                raw = col.aggregate(func=func_list).values
+            else:
+                # should not happen due to earlier validation
+                return {"success": False, "error": f"Unhandled metric '{metric}'", "table": table, "column": column}
+        except Exception as metric_exc:
+            return {
+                "success": False,
+                "table": table,
+                "column": column,
+                "metric": metric,
+                "error": f"Failed to compute metric '{metric}': {str(metric_exc)}"
+            }
+
+        # serialize result
+        result = _to_json_serializable(raw)
+
         return {
             "success": True,
             "table": table,
-            "column": column,
-            "summary": result,
-            "method": "vDataColumn stats"
+            "column": col_key,           # return stripped / human-friendly name
+            "metric": metric,
+            "result": result,
+            "method": "vDataColumn",
         }
-    
+
     except Exception as e:
-        return {"success": False, "error": str(e), "table": table, "column": column}
+        return {"success": False, "table": table, "column": column, "error": str(e)}
 
 
 # -----------------------------
