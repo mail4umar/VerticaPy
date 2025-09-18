@@ -4,6 +4,8 @@ from mcp.server.fastmcp import FastMCP
 from typing import Any
 import verticapy as vp
 import numpy as np
+from decimal import Decimal
+import datetime
 from verticapy._utils._sql._sys import _executeSQL
 from connection import VerticaPyConnection
 from verticapy.core.tablesample.base import TableSample
@@ -661,6 +663,496 @@ def column_stats(table: str, column: str, metric: str = "describe", **kwargs) ->
 
     except Exception as e:
         return {"success": False, "table": table, "column": column, "error": str(e)}
+
+
+@mcp.tool()
+def table_stats(table: str, metric: str = "describe", columns: list = None, **kwargs) -> dict:
+    """
+    MCP tool: return JSON-friendly statistics for an entire table using VerticaPy vDataFrame.
+
+    Args:
+        table (str): Table name
+        metric (str): One of:
+            describe, sum, var, std, avg, mean, count, max, min,
+            median, nunique, aggregate.
+        columns (list, optional): List of columns to analyze. If None, all numeric columns are used.
+        
+        kwargs: Extra parameters for specific metrics:
+            - aggregate: {"func": ["min", "approx_50%", "max"]}
+    
+    Returns:
+        dict: { success: bool, table, metric, result: <json-serializable> | error }
+    """
+    try:
+        # Validate metric - only include metrics that work at table level
+        table_level_metrics = [
+            "describe", "sum", "var", "std", "avg", "mean",
+            "count", "max", "min", "median", "nunique", "aggregate"
+        ]
+        
+        metric = (metric or "describe").lower()
+        if metric not in table_level_metrics:
+            return {
+                "success": False,
+                "table": table,
+                "metric": metric,
+                "error": f"Unsupported table-level metric '{metric}'. Choose from: {table_level_metrics}"
+            }
+
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}", "table": table}
+
+        # Build vDataFrame
+        vdf = vp.vDataFrame(table)
+
+        # Handle column selection
+        if columns is not None:
+            # Validate and resolve column names
+            available_cols = vdf.get_columns()
+            stripped_map = {c.strip('"'): c for c in available_cols}
+            
+            resolved_columns = []
+            for col in columns:
+                col_key = col.strip('"')
+                actual_col = stripped_map.get(col_key)
+                if actual_col is None:
+                    # Try case-insensitive match
+                    for k, v in stripped_map.items():
+                        if k.lower() == col_key.lower():
+                            actual_col = v
+                            break
+                
+                if actual_col is None:
+                    return {
+                        "success": False,
+                        "table": table,
+                        "metric": metric,
+                        "error": f"Column '{col}' not found. Available columns: {list(stripped_map.keys())}"
+                    }
+                resolved_columns.append(actual_col)
+            
+            # Use specific columns
+            columns_param = resolved_columns
+        else:
+            # Let vDataFrame determine appropriate columns (usually numeric ones)
+            columns_param = None
+
+        # Compute metric
+        try:
+            if metric == "describe":
+                if columns_param:
+                    raw = vdf.describe(columns=columns_param).values
+                else:
+                    raw = vdf.describe().values
+            elif metric in ("avg", "mean"):
+                if columns_param:
+                    raw = vdf.avg(columns=columns_param)
+                else:
+                    raw = vdf.avg()
+            elif metric == "sum":
+                if columns_param:
+                    raw = vdf.sum(columns=columns_param)
+                else:
+                    raw = vdf.sum()
+            elif metric == "var":
+                if columns_param:
+                    raw = vdf.var(columns=columns_param)
+                else:
+                    raw = vdf.var()
+            elif metric == "std":
+                if columns_param:
+                    raw = vdf.std(columns=columns_param)
+                else:
+                    raw = vdf.std()
+            elif metric == "count":
+                if columns_param:
+                    raw = vdf.count(columns=columns_param)
+                else:
+                    raw = vdf.count()
+            elif metric == "max":
+                if columns_param:
+                    raw = vdf.max(columns=columns_param)
+                else:
+                    raw = vdf.max()
+            elif metric == "min":
+                if columns_param:
+                    raw = vdf.min(columns=columns_param)
+                else:
+                    raw = vdf.min()
+            elif metric == "median":
+                if columns_param:
+                    raw = vdf.median(columns=columns_param)
+                else:
+                    raw = vdf.median()
+            elif metric == "nunique":
+                if columns_param:
+                    raw = vdf.nunique(columns=columns_param)
+                else:
+                    raw = vdf.nunique()
+            elif metric == "aggregate":
+                func_list = kwargs.get("func", ["min", "approx_10%", "approx_50%", "approx_90%", "max"])
+                if columns_param:
+                    raw = vdf.aggregate(func=func_list, columns=columns_param).values
+                else:
+                    raw = vdf.aggregate(func=func_list).values
+            else:
+                # Should not happen due to earlier validation
+                return {"success": False, "error": f"Unhandled metric '{metric}'", "table": table}
+        
+        except Exception as metric_exc:
+            return {
+                "success": False,
+                "table": table,
+                "metric": metric,
+                "error": f"Failed to compute table metric '{metric}': {str(metric_exc)}"
+            }
+
+        # Serialize result
+        result = _to_json_serializable(raw)
+
+        return {
+            "success": True,
+            "table": table,
+            "metric": metric,
+            "columns_analyzed": columns if columns else "auto_selected",
+            "result": result,
+            "method": "vDataFrame",
+        }
+
+    except Exception as e:
+        return {"success": False, "table": table, "metric": metric, "error": str(e)}
+
+
+# -----------------------------
+# Data Transformation Tools
+# -----------------------------
+
+# Global storage for transformed vDataFrames
+_vdf_cache = {}
+
+@mcp.tool()
+def transform_data(
+    table: str, 
+    operation: str, 
+    vdf_id: str = None,
+    show_preview: bool = True,
+    **kwargs
+) -> dict:
+    """
+    Transform data using VerticaPy vDataFrame operations like groupby, join, pivot, etc.
+    
+    Args:
+        table (str): Source table name or existing vdf_id from cache
+        operation (str): Type of transformation:
+            - "groupby": Group data and aggregate
+            - "join": Join with another table
+            - "pivot": Create pivot table
+            - "filter": Filter rows based on conditions
+            - "select": Select specific columns
+            - "sort": Sort data
+        vdf_id (str, optional): Unique ID to store the result vDataFrame for later use
+        show_preview (bool): Whether to show first 10 rows of result
+        
+        **kwargs: Operation-specific parameters:
+        
+        For groupby:
+            - columns (list): Columns to group by
+            - expr (list): Aggregation expressions, e.g., ["sum(revenue) AS daily_total"]
+        
+        For join:
+            - right_table (str): Table or vdf_id to join with
+            - on (str or list): Join condition(s)
+            - how (str): Join type ("inner", "left", "right", "full")
+        
+        For pivot:
+            - columns (list): Columns to pivot on
+            - values (str): Column containing values
+            - aggfunc (str): Aggregation function (default: "sum")
+        
+        For filter:
+            - condition (str): SQL WHERE condition
+        
+        For select:
+            - columns (list): Columns to select
+        
+        For sort:
+            - columns (list): Columns to sort by
+            - ascending (bool or list): Sort order (default: True)
+    
+    Returns:
+        dict: Transformation result with preview data and vdf_id for reuse
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+
+        # Get source vDataFrame
+        if table in _vdf_cache:
+            # Use cached vDataFrame
+            source_vdf = _vdf_cache[table]
+            source_info = f"cached_vdf_{table}"
+        else:
+            # Create new vDataFrame from table
+            try:
+                source_vdf = vp.vDataFrame(table)
+                source_info = f"table_{table}"
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"Failed to create vDataFrame from table '{table}': {str(e)}"
+                }
+
+        # Perform transformation based on operation
+        operation = operation.lower()
+        
+        try:
+            if operation == "groupby":
+                columns = kwargs.get("columns", [])
+                expr = kwargs.get("expr", [])
+                
+                if not columns:
+                    return {
+                        "success": False,
+                        "error": "groupby operation requires 'columns' parameter"
+                    }
+                
+                if not expr:
+                    return {
+                        "success": False,
+                        "error": "groupby operation requires 'expr' parameter with aggregation expressions"
+                    }
+                
+                result_vdf = source_vdf.groupby(columns=columns, expr=expr)
+                operation_info = f"groupby(columns={columns}, expr={expr})"
+            
+            elif operation == "join":
+                right_table = kwargs.get("right_table")
+                on = kwargs.get("on")
+                how = kwargs.get("how", "inner")
+                
+                if not right_table or not on:
+                    return {
+                        "success": False,
+                        "error": "join operation requires 'right_table' and 'on' parameters"
+                    }
+                
+                # Get right vDataFrame
+                if right_table in _vdf_cache:
+                    right_vdf = _vdf_cache[right_table]
+                else:
+                    right_vdf = vp.vDataFrame(right_table)
+                
+                result_vdf = source_vdf.join(right_vdf, on=on, how=how)
+                operation_info = f"join(right_table={right_table}, on={on}, how={how})"
+            
+            elif operation == "pivot":
+                columns = kwargs.get("columns", [])
+                values = kwargs.get("values")
+                aggfunc = kwargs.get("aggfunc", "sum")
+                
+                if not columns or not values:
+                    return {
+                        "success": False,
+                        "error": "pivot operation requires 'columns' and 'values' parameters"
+                    }
+                
+                result_vdf = source_vdf.pivot(columns=columns, values=values, aggfunc=aggfunc)
+                operation_info = f"pivot(columns={columns}, values={values}, aggfunc={aggfunc})"
+            
+            elif operation == "filter":
+                condition = kwargs.get("condition")
+                
+                if not condition:
+                    return {
+                        "success": False,
+                        "error": "filter operation requires 'condition' parameter"
+                    }
+                
+                result_vdf = source_vdf.filter(condition)
+                operation_info = f"filter(condition={condition})"
+            
+            elif operation == "select":
+                columns = kwargs.get("columns", [])
+                
+                if not columns:
+                    return {
+                        "success": False,
+                        "error": "select operation requires 'columns' parameter"
+                    }
+                
+                result_vdf = source_vdf[columns]
+                operation_info = f"select(columns={columns})"
+            
+            elif operation == "sort":
+                columns = kwargs.get("columns", [])
+                ascending = kwargs.get("ascending", True)
+                
+                if not columns:
+                    return {
+                        "success": False,
+                        "error": "sort operation requires 'columns' parameter"
+                    }
+                
+                result_vdf = source_vdf.sort(columns, ascending=ascending)
+                operation_info = f"sort(columns={columns}, ascending={ascending})"
+            
+            else:
+                return {
+                    "success": False,
+                    "error": f"Unsupported operation '{operation}'. Supported: groupby, join, pivot, filter, select, sort"
+                }
+        
+        except Exception as op_error:
+            return {
+                "success": False,
+                "error": f"Failed to execute {operation} operation: {str(op_error)}",
+                "operation": operation,
+                "kwargs": kwargs
+            }
+
+        # Generate vdf_id if not provided
+        if not vdf_id:
+            import time
+            vdf_id = f"{operation}_{int(time.time())}"
+        
+        # Store result in cache
+        _vdf_cache[vdf_id] = result_vdf
+        
+        # Get result info
+        try:
+            result_shape = result_vdf.shape()
+            result_columns = result_vdf.get_columns()
+            clean_columns = [col.strip('"') for col in result_columns]
+        except Exception:
+            result_shape = (0, 0)
+            clean_columns = []
+        
+        # Prepare response
+        response = {
+            "success": True,
+            "source": source_info,
+            "operation": operation_info,
+            "vdf_id": vdf_id,
+            "result_shape": result_shape,
+            "result_columns": clean_columns,
+            "cached": True
+        }
+        
+        # Add preview if requested
+        if show_preview and result_shape[0] > 0:
+            try:
+                # Get first 10 rows as JSON
+                preview_vdf = result_vdf[:10]
+                preview_json = preview_vdf.to_json()
+                
+                # Parse JSON string to object for cleaner output
+                import json
+                preview_data = json.loads(preview_json)
+                
+                response["preview"] = {
+                    "rows_shown": len(preview_data),
+                    "data": preview_data,
+                    "format": "json"
+                }
+            except Exception as preview_error:
+                # Fallback to basic info if preview fails
+                response["preview_error"] = f"Could not generate preview: {str(preview_error)}"
+        
+        return response
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in transform_data: {str(e)}",
+            "operation": operation
+        }
+
+
+@mcp.tool()
+def list_cached_vdfs() -> dict:
+    """
+    List all cached vDataFrames available for use in other operations.
+    
+    Returns:
+        dict: Information about all cached vDataFrames
+    """
+    try:
+        vdf_info = {}
+        
+        for vdf_id, vdf in _vdf_cache.items():
+            try:
+                shape = vdf.shape()
+                columns = vdf.get_columns()
+                clean_columns = [col.strip('"') for col in columns]
+                
+                vdf_info[vdf_id] = {
+                    "shape": shape,
+                    "columns": clean_columns,
+                    "column_count": len(clean_columns)
+                }
+            except Exception as e:
+                vdf_info[vdf_id] = {
+                    "error": f"Could not get info: {str(e)}"
+                }
+        
+        return {
+            "success": True,
+            "cached_vdfs": vdf_info,
+            "count": len(_vdf_cache)
+        }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to list cached vDataFrames: {str(e)}"
+        }
+
+
+@mcp.tool()
+def clear_vdf_cache(vdf_id: str = None) -> dict:
+    """
+    Clear cached vDataFrames.
+    
+    Args:
+        vdf_id (str, optional): Specific vDataFrame ID to remove. If None, clears all.
+    
+    Returns:
+        dict: Operation result
+    """
+    try:
+        global _vdf_cache
+        
+        if vdf_id:
+            if vdf_id in _vdf_cache:
+                del _vdf_cache[vdf_id]
+                return {
+                    "success": True,
+                    "message": f"Cleared vDataFrame '{vdf_id}' from cache",
+                    "remaining_count": len(_vdf_cache)
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"vDataFrame '{vdf_id}' not found in cache"
+                }
+        else:
+            cleared_count = len(_vdf_cache)
+            _vdf_cache.clear()
+            return {
+                "success": True,
+                "message": f"Cleared all {cleared_count} vDataFrames from cache",
+                "remaining_count": 0
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to clear cache: {str(e)}"
+        }
 
 
 # -----------------------------
