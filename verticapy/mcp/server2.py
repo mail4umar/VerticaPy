@@ -608,8 +608,12 @@ def column_stats(table: str, column: str, metric: str = "describe", **extra_kwar
         if not success:
             return {"success": False, "error": f"Connection failed: {message}", "table": table, "column": column}
 
-        # build vDataFrame
-        vdf = vp.vDataFrame(table)
+        # Get vDataFrame - check cache first, then create from table
+        if table in _vdf_cache:
+            vdf = _vdf_cache[table]
+        else:
+            # build vDataFrame from table
+            vdf = vp.vDataFrame(table)
 
         # resolve actual column name from vdf.get_columns() (handles quoted names)
         available_cols = vdf.get_columns()  # e.g. ['"date"', '"unit_price"', ...]
@@ -770,8 +774,12 @@ def table_stats(table: str, metric: str = "describe", columns: list = None, **ex
         if not success:
             return {"success": False, "error": f"Connection failed: {message}", "table": table}
 
-        # Build vDataFrame
-        vdf = vp.vDataFrame(table)
+        # Get vDataFrame - check cache first, then create from table
+        if table in _vdf_cache:
+            vdf = _vdf_cache[table]
+        else:
+            # Build vDataFrame from table
+            vdf = vp.vDataFrame(table)
 
         # Handle column selection
         if columns is not None:
@@ -1080,6 +1088,17 @@ def transform_data(
                         "success": False,
                         "error": f"search operation requires 'conditions' parameter. Received kwargs: {kwargs}"
                     }
+                
+                # Check if expr contains aggregate functions - suggest groupby instead
+                if expr and isinstance(expr, list):
+                    aggregate_funcs = ['sum(', 'count(', 'avg(', 'min(', 'max(', 'median(']
+                    for e in expr:
+                        if any(func in str(e).lower() for func in aggregate_funcs):
+                            return {
+                                "success": False,
+                                "error": f"Cannot use aggregate functions in search operation. Use 'groupby' operation instead for expressions like: {expr}",
+                                "suggestion": "Use operation='groupby' with appropriate 'columns' and 'expr' parameters"
+                            }
                 
                 result_vdf = source_vdf.search(conditions=conditions, usecols=usecols, expr=expr, order_by=order_by)
                 operation_info = f"search(conditions={conditions}, usecols={usecols}, expr={expr}, order_by={order_by})"
