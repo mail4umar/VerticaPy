@@ -47,12 +47,6 @@ def _to_json_serializable(obj: Any):
     if isinstance(obj, np.ndarray):
         return _to_json_serializable(obj.tolist())
 
-    # numpy scalar types
-    if isinstance(obj, (np.integer, np.int_, np.int64)):
-        return int(obj)
-    if isinstance(obj, (np.floating, np.float_, np.float64)):
-        return float(obj)
-
     # Decimal
     if isinstance(obj, Decimal):
         try:
@@ -99,8 +93,10 @@ def connect_to_vertica() -> dict:
         if success:
             # Test the connection by getting version info
             try:
-                version_info = vp.version()
-                result["verticapy_version"] = version_info
+                verticapy_version = vp.__version__
+                vertica_db_version = vp.vertica_version()
+                result["verticapy_version"] = verticapy_version
+                result["vertica_db_version"] = vertica_db_version
             except Exception as e:
                 result["warning"] = f"Connected but couldn't retrieve version info: {str(e)}"
         
@@ -287,7 +283,7 @@ def list_all_schemas() -> dict:
             # Query to get all schemas
             sql_query = """
             SELECT schema_name 
-            FROM information_schema.schemata 
+            FROM v_catalog.schemata 
             ORDER BY schema_name
             """
             
@@ -346,10 +342,42 @@ def describe_table(table: str) -> dict:
         
         # Column names + types
         dtypes_info = vdf.dtypes()
-        column_details = {
-            "index": [col.strip('"') for col in dtypes_info.keys()],
-            "dtype": list(dtypes_info.values())
-        }
+        
+        # Handle different dtypes return formats
+        if hasattr(dtypes_info, 'values'):
+            # If dtypes returns a TableSample-like object, convert to dict
+            dtypes_dict = _to_json_serializable(dtypes_info.values)
+            if isinstance(dtypes_dict, dict) and "index" in dtypes_dict and "dtype" in dtypes_dict:
+                column_details = {
+                    "index": [col.strip('"') for col in dtypes_dict["index"]],
+                    "dtype": dtypes_dict["dtype"]
+                }
+            else:
+                # Fallback if the structure is unexpected
+                try:
+                    columns = vdf.get_columns()
+                    column_details = {
+                        "index": [col.strip('"') for col in columns],
+                        "dtype": ["unknown"] * len(columns)
+                    }
+                except Exception:
+                    column_details = {"index": [], "dtype": []}
+        elif isinstance(dtypes_info, dict):
+            # If dtypes returns a regular dict
+            column_details = {
+                "index": [col.strip('"') for col in dtypes_info.keys()],
+                "dtype": list(dtypes_info.values())
+            }
+        else:
+            # Fallback: try to get column info differently
+            try:
+                columns = vdf.get_columns()
+                column_details = {
+                    "index": [col.strip('"') for col in columns],
+                    "dtype": ["unknown"] * len(columns)
+                }
+            except Exception:
+                column_details = {"index": [], "dtype": []}
         
         # Stats for numeric columns
         stats = {}
@@ -518,7 +546,7 @@ AVAILABLE_METRICS = [
 ]
 
 @mcp.tool()
-def column_stats(table: str, column: str, metric: str = "describe", **kwargs) -> dict:
+def column_stats(table: str, column: str, metric: str = "describe", **extra_kwargs) -> dict:
     """
     MCP tool: return JSON-friendly statistics for a single column using VerticaPy vDataColumn.
 
@@ -544,6 +572,14 @@ def column_stats(table: str, column: str, metric: str = "describe", **kwargs) ->
         dict: { success: bool, table, column, metric, result: <json-serializable> | error }
     """
     try:
+        # Parse extra_kwargs - handle both dict and JSON string formats
+        import json
+        if isinstance(extra_kwargs, dict):
+            kwargs = extra_kwargs
+        else:
+            # If extra_kwargs is not a dict, use empty dict
+            kwargs = {}
+        
         # validate metric
         metric = (metric or "describe").lower()
         if metric not in AVAILABLE_METRICS:
@@ -666,7 +702,7 @@ def column_stats(table: str, column: str, metric: str = "describe", **kwargs) ->
 
 
 @mcp.tool()
-def table_stats(table: str, metric: str = "describe", columns: list = None, **kwargs) -> dict:
+def table_stats(table: str, metric: str = "describe", columns: list = None, **extra_kwargs) -> dict:
     """
     MCP tool: return JSON-friendly statistics for an entire table using VerticaPy vDataFrame.
 
@@ -684,6 +720,14 @@ def table_stats(table: str, metric: str = "describe", columns: list = None, **kw
         dict: { success: bool, table, metric, result: <json-serializable> | error }
     """
     try:
+        # Parse extra_kwargs - handle both dict and JSON string formats
+        import json
+        if isinstance(extra_kwargs, dict):
+            kwargs = extra_kwargs
+        else:
+            # If extra_kwargs is not a dict, use empty dict
+            kwargs = {}
+        
         # Validate metric - only include metrics that work at table level
         table_level_metrics = [
             "describe", "sum", "var", "std", "avg", "mean",
@@ -838,7 +882,8 @@ def transform_data(
     operation: str, 
     vdf_id: str = None,
     show_preview: bool = True,
-    **kwargs
+    kwargs: str = "{}",
+    **extra_kwargs
 ) -> dict:
     """
     Transform data using VerticaPy vDataFrame operations like groupby, join, pivot, etc.
@@ -855,7 +900,7 @@ def transform_data(
         vdf_id (str, optional): Unique ID to store the result vDataFrame for later use
         show_preview (bool): Whether to show first 10 rows of result
         
-        **kwargs: Operation-specific parameters:
+        kwargs (str): JSON string containing operation-specific parameters, or dict:
         
         For groupby:
             - columns (list): Columns to group by
@@ -897,6 +942,28 @@ def transform_data(
         dict: Transformation result with preview data and vdf_id for reuse
     """
     try:
+        # Parse kwargs if it's a JSON string
+        import json
+        if isinstance(kwargs, str):
+            try:
+                parsed_kwargs = json.loads(kwargs)
+            except json.JSONDecodeError:
+                parsed_kwargs = {}
+        else:
+            parsed_kwargs = kwargs if kwargs else {}
+        
+        # Parse extra_kwargs if it's a JSON string
+        if isinstance(extra_kwargs, str):
+            try:
+                parsed_extra_kwargs = json.loads(extra_kwargs)
+                parsed_kwargs.update(parsed_extra_kwargs)
+            except json.JSONDecodeError:
+                pass  # ignore invalid JSON in extra_kwargs
+        elif isinstance(extra_kwargs, dict):
+            parsed_kwargs.update(extra_kwargs)
+        
+        kwargs = parsed_kwargs
+        
         # Ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
@@ -992,7 +1059,7 @@ def transform_data(
                 if not conditions:
                     return {
                         "success": False,
-                        "error": "search operation requires 'conditions' parameter"
+                        "error": f"search operation requires 'conditions' parameter. Received kwargs: {kwargs}"
                     }
                 
                 result_vdf = source_vdf.search(conditions=conditions, usecols=usecols, expr=expr, order_by=order_by)
@@ -1016,7 +1083,7 @@ def transform_data(
                 if not columns:
                     return {
                         "success": False,
-                        "error": "sort operation requires 'columns' parameter"
+                        "error": f"sort operation requires 'columns' parameter. Received kwargs: {kwargs}"
                     }
                 
                 # Handle both dict format {"column": "asc"} and list/string format
