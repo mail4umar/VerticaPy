@@ -563,22 +563,34 @@ def column_stats(table: str, column: str, metric: str = "describe", **extra_kwar
         topk -> get the top k repeated values along with their percentage
         nunique -> get the number of unique values in a column
         
-        kwargs: Extra parameters, e.g.:
-            - topk: {"k": 5}
-            - nlargest: {"n": 5}
-            - nsmallest: {"n": 5}
-            - aggregate: {"func": ["min", "approx_50%", "max"]}
+        Extra parameters for specific metrics:
+            - topk: k (int) - number of top values
+            - nlargest: n (int) - number of largest values  
+            - nsmallest: n (int) - number of smallest values
+            - aggregate: func (list) - aggregation functions
     Returns:
         dict: { success: bool, table, column, metric, result: <json-serializable> | error }
     """
     try:
-        # Parse extra_kwargs - handle both dict and JSON string formats
+        # Parse extra_kwargs - MCP sends it as a JSON string in extra_kwargs parameter
         import json
-        if isinstance(extra_kwargs, dict):
-            kwargs = extra_kwargs
-        else:
-            # If extra_kwargs is not a dict, use empty dict
-            kwargs = {}
+        kwargs = {}
+        
+        # Check if extra_kwargs contains a JSON string to parse
+        if 'extra_kwargs' in extra_kwargs:
+            extra_kwargs_value = extra_kwargs['extra_kwargs']
+            if isinstance(extra_kwargs_value, str):
+                try:
+                    kwargs = json.loads(extra_kwargs_value)
+                except json.JSONDecodeError:
+                    pass
+            elif isinstance(extra_kwargs_value, dict):
+                kwargs = extra_kwargs_value
+        
+        # Also add any other direct parameters
+        for key, value in extra_kwargs.items():
+            if key != 'extra_kwargs':
+                kwargs[key] = value
         
         # validate metric
         metric = (metric or "describe").lower()
@@ -712,21 +724,31 @@ def table_stats(table: str, metric: str = "describe", columns: list = None, **ex
             describe, sum, var, std, avg, mean, count, max, min,
             median, nunique, aggregate.
         columns (list, optional): List of columns to analyze. If None, all numeric columns are used.
-        
-        kwargs: Extra parameters for specific metrics:
-            - aggregate: {"func": ["min", "approx_50%", "max"]}
+        **extra_kwargs: Additional parameters for specific metrics (e.g., func for aggregate)
     
     Returns:
         dict: { success: bool, table, metric, result: <json-serializable> | error }
     """
     try:
-        # Parse extra_kwargs - handle both dict and JSON string formats
+        # Parse extra_kwargs - MCP sends it as a JSON string in extra_kwargs parameter
         import json
-        if isinstance(extra_kwargs, dict):
-            kwargs = extra_kwargs
-        else:
-            # If extra_kwargs is not a dict, use empty dict
-            kwargs = {}
+        kwargs = {}
+        
+        # Check if extra_kwargs contains a JSON string to parse
+        if 'extra_kwargs' in extra_kwargs:
+            extra_kwargs_value = extra_kwargs['extra_kwargs']
+            if isinstance(extra_kwargs_value, str):
+                try:
+                    kwargs = json.loads(extra_kwargs_value)
+                except json.JSONDecodeError:
+                    pass
+            elif isinstance(extra_kwargs_value, dict):
+                kwargs = extra_kwargs_value
+        
+        # Also add any other direct parameters
+        for key, value in extra_kwargs.items():
+            if key != 'extra_kwargs':
+                kwargs[key] = value
         
         # Validate metric - only include metrics that work at table level
         table_level_metrics = [
@@ -882,7 +904,6 @@ def transform_data(
     operation: str, 
     vdf_id: str = None,
     show_preview: bool = True,
-    kwargs: str = "{}",
     **extra_kwargs
 ) -> dict:
     """
@@ -942,27 +963,25 @@ def transform_data(
         dict: Transformation result with preview data and vdf_id for reuse
     """
     try:
-        # Parse kwargs if it's a JSON string
+        # Parse extra_kwargs - MCP sends it as a JSON string in extra_kwargs parameter
         import json
-        if isinstance(kwargs, str):
-            try:
-                parsed_kwargs = json.loads(kwargs)
-            except json.JSONDecodeError:
-                parsed_kwargs = {}
-        else:
-            parsed_kwargs = kwargs if kwargs else {}
+        kwargs = {}
         
-        # Parse extra_kwargs if it's a JSON string
-        if isinstance(extra_kwargs, str):
-            try:
-                parsed_extra_kwargs = json.loads(extra_kwargs)
-                parsed_kwargs.update(parsed_extra_kwargs)
-            except json.JSONDecodeError:
-                pass  # ignore invalid JSON in extra_kwargs
-        elif isinstance(extra_kwargs, dict):
-            parsed_kwargs.update(extra_kwargs)
+        # Check if extra_kwargs contains a JSON string to parse
+        if 'extra_kwargs' in extra_kwargs:
+            extra_kwargs_value = extra_kwargs['extra_kwargs']
+            if isinstance(extra_kwargs_value, str):
+                try:
+                    kwargs = json.loads(extra_kwargs_value)
+                except json.JSONDecodeError:
+                    pass
+            elif isinstance(extra_kwargs_value, dict):
+                kwargs = extra_kwargs_value
         
-        kwargs = parsed_kwargs
+        # Also add any other direct parameters
+        for key, value in extra_kwargs.items():
+            if key != 'extra_kwargs':
+                kwargs[key] = value
         
         # Ensure connection
         success, message = connection_manager.ensure_connected()
