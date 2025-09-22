@@ -1,0 +1,13 @@
+# MCP Test Configuration Example
+# Copy this file to test_config.conf and modify as needed
+# This matches the exact CONN_INFO format used by MCP
+
+[mcp_test_config]
+host = 10.10.10.69
+port = 32796
+database = verticadb21477
+user = ughumman
+password = 
+log_level = INFO
+test_schema = public
+test_table = titanic
