@@ -15,49 +15,23 @@ The test suite thoroughly tests all MCP tools provided by `server2.py`, includin
 - **Parameter Parsing**: Testing different parameter formats and JSON parsing
 
 
+
 ## Files
 
 - `test_pytest.py` - Main comprehensive test suite (pytest-based)
-- `config.py` - Test configuration management
-- `test_config.conf.example` - Example configuration file
+- `config.py` - Test configuration and connection info
 - `run_tests.py` - Simple test runner script
 - `README.md` - This documentation
 
 ## Setup
 
-### 1. Database Connection
 
-Create a configuration file from the example:
+## Configuration
 
-```bash
-copy test_config.conf.example test_config.conf
-```
+All database connection information and test configuration is managed in `config.py`.
+You do not need to create or edit any `.conf` files or set environment variables.
+Edit `config.py` directly if you need to change connection details or test parameters.
 
-Edit `test_config.conf` with your Vertica database connection details (matching MCP CONN_INFO format):
-
-```ini
-[mcp_test_config]
-host = 10.10.10.69
-port = 32796
-database = verticadb21477
-user = ughumman
-password = 
-log_level = INFO
-test_schema = public
-test_table = titanic
-```
-
-### 2. Environment Variables (Alternative)
-
-You can also set environment variables instead of using the config file (matching MCP pattern):
-
-```bash
-export VERTICA_HOST=10.10.10.69
-export VERTICA_PORT=32796
-export VERTICA_DATABASE=verticadb21477
-export VERTICA_USER=ughumman
-export VERTICA_PASSWORD=your_password
-```
 
 ## Running Tests
 
@@ -68,31 +42,13 @@ cd verticapy/mcp/tests
 python run_tests.py
 ```
 
-The test runner automatically detects pytest and falls back to unittest if needed.
+The test runner uses pytest by default.
 
-
-### Method 2: Using pytest directly (Recommended)
+### Method 2: Using pytest directly
 
 ```bash
 cd verticapy/mcp/tests
 pytest test_pytest.py -v --tb=short --color=yes
-```
-
-### Method 3: Using specific framework
-
-```bash
-# Force pytest
-python run_tests.py --framework pytest --verbose
-
-# Force unittest
-python run_tests.py --framework unittest
-```
-
-
-### Method 4: Using unittest directly
-
-```bash
-# Not applicable (no unittest-based test file retained)
 ```
 
 ## Test Structure
@@ -195,26 +151,27 @@ Configuration loaded: Host=localhost, Database=vmart
 ...
 ```
 
+
 ## Requirements
 
 - Python 3.7+
 - VerticaPy
 - Access to a Vertica database
 - Required Python packages:
-  - `pytest` (recommended: `pip install pytest`)
-  - `unittest` (built-in, fallback)
-  - `json` (built-in)
-  - `logging` (built-in)
-  - `configparser` (built-in)
+   - `pytest` (recommended: `pip install pytest`)
+   - `json` (built-in)
+   - `logging` (built-in)
 
 ## Troubleshooting
 
+
 ### Connection Issues
 
-1. Verify your database connection details in `test_config.conf`
+1. Verify your database connection details in `config.py`
 2. Ensure the Vertica database is running and accessible
 3. Check firewall settings and network connectivity
 4. Verify user permissions for database access
+
 
 ### Test Data Issues
 
@@ -222,11 +179,13 @@ Configuration loaded: Host=localhost, Database=vmart
 2. Verify you have permissions to create tables in the test schema
 3. Check if the Titanic dataset is available in your VerticaPy installation
 
+
 ### Import Issues
 
 1. Ensure VerticaPy is properly installed
 2. Verify the MCP server files are in the correct location
 3. Check Python path configuration
+
 
 ### Test Failures
 
