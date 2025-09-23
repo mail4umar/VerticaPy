@@ -6,6 +6,8 @@ import verticapy as vp
 import numpy as np
 from decimal import Decimal
 import datetime
+import json
+import time
 import verticapy as vp
 import verticapy as vp
 from verticapy._utils._sql._sys import _executeSQL
@@ -1358,10 +1360,11 @@ def train_model(
     target: str = None,
     features: list = None,
     test_table: str = None,
-    **model_params
+    model_params: str = None,
+    **extra_kwargs
 ) -> dict:
     """
-    Train a machine learning model using VerticaPy.
+    Train a machine learning model using VerticaPy with comprehensive performance metrics.
     
     Args:
         table (str): Table name or vdf_id from cache to use for training
@@ -1375,12 +1378,44 @@ def train_model(
         target (str, optional): Target column name (required for supervised models)
         features (list, optional): List of feature column names. If None, auto-detected.
         test_table (str, optional): Test table for evaluation
-        **model_params: Additional model parameters (e.g., max_depth=5, n_estimators=100)
+        model_params (str, optional): JSON string or dict containing model parameters.
+            Examples: 
+            - '{"max_iter": 100, "tol": 1e-6}' for LogisticRegression
+            - '{"max_depth": 5, "n_estimators": 100}' for RandomForest
+            - '{"n_cluster": 3, "init_method": "kmeanspp"}' for KMeans
+        **extra_kwargs: Additional direct model parameters (alternative to model_params)
     
     Returns:
-        dict: Training results with model info, metrics, and evaluation
+        dict: Comprehensive training results including:
+            - model_info: Basic model information (name, type, features, target)
+            - feature_importance: Feature importance scores and signs (for supported models)
+            - performance_metrics: Model evaluation metrics (R², RMSE, MAE, AIC, BIC, etc.)
+            - model_summary: Detailed coefficients with statistical significance
+            - model_score: Overall model score
+            - classification_report: Classification metrics (for classifiers)
+            - confusion_matrix: Confusion matrix (for classifiers)
+            - centroids: Cluster centers (for clustering models)
     """
     try:
+        # Parse model_params if provided (can be JSON string or dict)
+        parsed_model_params = {}
+        
+        if model_params:
+            if isinstance(model_params, str):
+                if model_params.strip():  # Only parse non-empty strings
+                    try:
+                        parsed_model_params = json.loads(model_params)
+                    except json.JSONDecodeError as e:
+                        return {
+                            "success": False,
+                            "error": f"Invalid JSON in model_params: {str(e)}"
+                        }
+            elif isinstance(model_params, dict):
+                parsed_model_params = model_params
+        
+        # Merge with any additional kwargs
+        final_model_params = {**parsed_model_params, **extra_kwargs}
+        
         # Ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
@@ -1482,7 +1517,7 @@ def train_model(
         
         # Create model instance
         try:
-            model = ModelClass(name=model_name, **model_params)
+            model = ModelClass(name=model_name, **final_model_params)
         except Exception as e:
             return {
                 "success": False,
@@ -1546,7 +1581,7 @@ def train_model(
             try:
                 model_info["parameters"] = model.get_params()
             except:
-                model_info["parameters"] = model_params
+                model_info["parameters"] = final_model_params
             
             response = {
                 "success": True,
