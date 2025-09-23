@@ -1425,31 +1425,60 @@ def train_model(
                     "error": f"Failed to load training data from {table}: {str(e)}"
                 }
         
+        # Get available columns and create a mapping for both quoted and unquoted names
+        available_columns = train_vdf.get_columns()
+        # Create a mapping: both quoted and unquoted names -> actual column name
+        column_mapping = {}
+        for col in available_columns:
+            stripped = col.strip('"')
+            column_mapping[col] = col  # exact match
+            column_mapping[stripped] = col  # unquoted -> quoted
+            column_mapping[stripped.lower()] = col  # case-insensitive
+            column_mapping[col.lower()] = col  # quoted case-insensitive
+        
+        # Validate and resolve target column name (for supervised models)
+        actual_target = None
+        if is_supervised:
+            if target in column_mapping:
+                actual_target = column_mapping[target]
+            else:
+                available_cols_clean = [col.strip('"') for col in available_columns]
+                return {
+                    "success": False,
+                    "error": f"Target column '{target}' not found. Available: {available_cols_clean}"
+                }
+        
         # Auto-detect features if not provided
         if features is None:
-            all_columns = train_vdf.get_columns()
             if is_supervised:
                 # Remove target from features for supervised models
-                features = [col for col in all_columns if col.strip('"').lower() != target.strip('"').lower()]
+                features = [col for col in available_columns if col != actual_target]
             else:
                 # Use all columns for clustering
-                features = all_columns
+                features = available_columns
+        else:
+            # Validate and resolve feature column names
+            resolved_features = []
+            missing_features = []
+            
+            for feature in features:
+                if feature in column_mapping:
+                    resolved_features.append(column_mapping[feature])
+                else:
+                    missing_features.append(feature)
+            
+            if missing_features:
+                available_cols_clean = [col.strip('"') for col in available_columns]
+                return {
+                    "success": False,
+                    "error": f"Features not found in data: {missing_features}. Available: {available_cols_clean}"
+                }
+            
+            features = resolved_features
         
-        # Validate features exist
-        available_columns = train_vdf.get_columns()
-        missing_features = [f for f in features if f not in available_columns]
-        if missing_features:
-            return {
-                "success": False,
-                "error": f"Features not found in data: {missing_features}. Available: {available_columns}"
-            }
-        
-        # Validate target exists (for supervised models)
-        if is_supervised and target not in available_columns:
-            return {
-                "success": False,
-                "error": f"Target column '{target}' not found. Available: {available_columns}"
-            }
+        # Use resolved names
+        if is_supervised:
+            target = actual_target
         
         # Create model instance
         try:
@@ -1525,18 +1554,76 @@ def train_model(
                 "training_summary": str(fit_result) if fit_result else "Training completed successfully"
             }
             
-            # Add evaluation metrics if available and it's supervised
-            if is_supervised and test_table:
-                try:
-                    if hasattr(model, 'score'):
-                        score = model.score()
-                        response["test_score"] = score
-                    if hasattr(model, 'classification_report') and 'classifier' in model_type:
-                        # For classification models
-                        report = model.classification_report()
-                        response["classification_metrics"] = _to_json_serializable(report.values)
-                except Exception as e:
-                    response["evaluation_note"] = f"Could not compute evaluation metrics: {str(e)}"
+            # Add comprehensive performance metrics
+            try:
+                # Get feature importance (for supervised models that support it)
+                if is_supervised and hasattr(model, 'features_importance'):
+                    try:
+                        feature_importance = model.features_importance(show=False)
+                        response["feature_importance"] = _to_json_serializable(feature_importance.values)
+                    except Exception as e:
+                        response["feature_importance_note"] = f"Could not get feature importance: {str(e)}"
+                
+                # Get performance report (for supervised models)
+                if is_supervised and hasattr(model, 'report'):
+                    try:
+                        performance_report = model.report()
+                        response["performance_metrics"] = _to_json_serializable(performance_report.values)
+                    except Exception as e:
+                        response["performance_metrics_note"] = f"Could not get performance report: {str(e)}"
+                
+                # Get model summary (detailed coefficients, etc.)
+                if hasattr(model, 'summarize'):
+                    try:
+                        model_summary = model.summarize()
+                        response["model_summary"] = model_summary
+                    except Exception as e:
+                        response["model_summary_note"] = f"Could not get model summary: {str(e)}"
+                
+                # Get additional model-specific metrics
+                if is_supervised:
+                    # Classification-specific metrics
+                    if 'classifier' in model_type or 'logistic' in model_type:
+                        try:
+                            if hasattr(model, 'classification_report'):
+                                classification_report = model.classification_report()
+                                response["classification_report"] = _to_json_serializable(classification_report.values)
+                        except Exception as e:
+                            response["classification_report_note"] = f"Could not get classification report: {str(e)}"
+                        
+                        try:
+                            if hasattr(model, 'confusion_matrix'):
+                                confusion_matrix = model.confusion_matrix()
+                                response["confusion_matrix"] = _to_json_serializable(confusion_matrix.values)
+                        except Exception as e:
+                            response["confusion_matrix_note"] = f"Could not get confusion matrix: {str(e)}"
+                    
+                    # Try to get model score
+                    try:
+                        if hasattr(model, 'score'):
+                            score = model.score()
+                            response["model_score"] = _to_json_serializable(score)
+                    except Exception as e:
+                        response["model_score_note"] = f"Could not get model score: {str(e)}"
+                
+                # Clustering-specific metrics
+                elif is_clustering:
+                    try:
+                        if hasattr(model, 'get_params'):
+                            cluster_params = model.get_params()
+                            response["cluster_parameters"] = cluster_params
+                        
+                        # Try to get cluster centers or other clustering metrics
+                        if hasattr(model, 'cluster_centers_'):
+                            response["cluster_centers"] = _to_json_serializable(model.cluster_centers_)
+                        elif hasattr(model, 'centroids'):
+                            centroids = model.centroids()
+                            response["centroids"] = _to_json_serializable(centroids.values)
+                    except Exception as e:
+                        response["clustering_metrics_note"] = f"Could not get clustering metrics: {str(e)}"
+                        
+            except Exception as e:
+                response["metrics_collection_error"] = f"Error collecting performance metrics: {str(e)}"
             
             return response
             
