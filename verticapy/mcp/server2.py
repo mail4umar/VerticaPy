@@ -6,7 +6,10 @@ import verticapy as vp
 import numpy as np
 from decimal import Decimal
 import datetime
+import verticapy as vp
+import verticapy as vp
 from verticapy._utils._sql._sys import _executeSQL
+from verticapy._utils._gen import gen_name
 from connection import VerticaPyConnection
 from verticapy.core.tablesample.base import TableSample
 
@@ -1300,25 +1303,490 @@ def clear_vdf_cache(vdf_id: str = None) -> dict:
 # -----------------------------
 # Modeling Tools
 # -----------------------------
-@mcp.tool()
-def train_model(table: str, target: str, model_type: str = "logistic_reg"):
-    """Train a model in Vertica (placeholder)."""
-    return {
-        "table": table,
-        "target": target,
-        "model_type": model_type,
-        "metrics": {"accuracy": 0.0, "auc": 0.0},
-    }
+
+# Import necessary ML models
+from verticapy.machine_learning.vertica.linear_model import (
+    LinearRegression,
+    LogisticRegression,
+    Ridge,
+    Lasso,
+    ElasticNet,
+)
+from verticapy.machine_learning.vertica.ensemble import (
+    RandomForestClassifier,
+    RandomForestRegressor,
+    XGBClassifier,
+    XGBRegressor,
+)
+from verticapy.machine_learning.vertica.tree import (
+    DecisionTreeClassifier,
+    DecisionTreeRegressor,
+)
+from verticapy.machine_learning.vertica.cluster import (
+    KMeans,
+    DBSCAN,
+)
+from verticapy.machine_learning.vertica.model_management import load_model
+
+# Available models mapping
+AVAILABLE_MODELS = {
+    # Classification models
+    "logistic_regression": LogisticRegression,
+    "random_forest_classifier": RandomForestClassifier,
+    "xgb_classifier": XGBClassifier,
+    "decision_tree_classifier": DecisionTreeClassifier,
+    
+    # Regression models  
+    "linear_regression": LinearRegression,
+    "ridge": Ridge,
+    "lasso": Lasso,
+    "elastic_net": ElasticNet,
+    "random_forest_regressor": RandomForestRegressor,
+    "xgb_regressor": XGBRegressor,
+    "decision_tree_regressor": DecisionTreeRegressor,
+    
+    # Clustering models
+    "kmeans": KMeans,
+    "dbscan": DBSCAN,
+}
 
 @mcp.tool()
-def predict(table: str, model_name: str):
-    """Apply model to table (placeholder)."""
-    return {"table": table, "model_name": model_name, "predictions": ["..."]}
+def train_model(
+    table: str, 
+    model_type: str, 
+    model_name: str = None,
+    target: str = None,
+    features: list = None,
+    test_table: str = None,
+    **model_params
+) -> dict:
+    """
+    Train a machine learning model using VerticaPy.
+    
+    Args:
+        table (str): Table name or vdf_id from cache to use for training
+        model_type (str): Type of model to train. Available options:
+            Classification: logistic_regression, random_forest_classifier, 
+                          xgb_classifier, decision_tree_classifier
+            Regression: linear_regression, ridge, lasso, elastic_net,
+                       random_forest_regressor, xgb_regressor, decision_tree_regressor  
+            Clustering: kmeans, dbscan
+        model_name (str, optional): Name to save the model. If None, auto-generated.
+        target (str, optional): Target column name (required for supervised models)
+        features (list, optional): List of feature column names. If None, auto-detected.
+        test_table (str, optional): Test table for evaluation
+        **model_params: Additional model parameters (e.g., max_depth=5, n_estimators=100)
+    
+    Returns:
+        dict: Training results with model info, metrics, and evaluation
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        # Validate model type
+        if model_type not in AVAILABLE_MODELS:
+            return {
+                "success": False,
+                "error": f"Unsupported model type '{model_type}'. Available types: {list(AVAILABLE_MODELS.keys())}"
+            }
+        
+        # Get model class
+        ModelClass = AVAILABLE_MODELS[model_type]
+        
+        # Generate model name if not provided
+        if not model_name:
+            model_name = f"mcp_{model_type}_{gen_name()}"
+        
+        # Get training data (from cache or table)
+        if table in _vdf_cache:
+            train_vdf = _vdf_cache[table]
+            table_info = f"cached vDataFrame '{table}'"
+        else:
+            try:
+                train_vdf = vp.vDataFrame(table)
+                table_info = f"table '{table}'"
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"Failed to load training data from {table}: {str(e)}"
+                }
+        
+        # Determine if it's a supervised model
+        is_supervised = model_type not in ["kmeans", "dbscan"]
+        is_clustering = model_type in ["kmeans", "dbscan"]
+        
+        if is_supervised and not target:
+            return {
+                "success": False, 
+                "error": "Target column is required for supervised learning models"
+            }
+        
+        # Auto-detect features if not provided
+        if features is None:
+            all_columns = train_vdf.get_columns()
+            if is_supervised:
+                # Remove target from features for supervised models
+                features = [col for col in all_columns if col.strip('"').lower() != target.strip('"').lower()]
+            else:
+                # Use all columns for clustering
+                features = all_columns
+        
+        # Validate features exist
+        available_columns = train_vdf.get_columns()
+        missing_features = [f for f in features if f not in available_columns]
+        if missing_features:
+            return {
+                "success": False,
+                "error": f"Features not found in data: {missing_features}. Available: {available_columns}"
+            }
+        
+        # Validate target exists (for supervised models)
+        if is_supervised and target not in available_columns:
+            return {
+                "success": False,
+                "error": f"Target column '{target}' not found. Available: {available_columns}"
+            }
+        
+        # Create model instance
+        try:
+            model = ModelClass(name=model_name, **model_params)
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to create model instance: {str(e)}"
+            }
+        
+        # Train the model
+        try:
+            if is_clustering:
+                # Clustering models
+                fit_result = model.fit(train_vdf, features)
+            else:
+                # Supervised models
+                test_relation = test_table if test_table else ""
+                fit_result = model.fit(train_vdf, features, target, test_relation, return_report=True)
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to train model: {str(e)}"
+            }
+        
+        # Get model information
+        try:
+            model_info = {
+                "model_name": model_name,
+                "model_type": model_type,
+                "features": features,
+                "n_features": len(features),
+                "training_table": table_info,
+                "model_stored": True
+            }
+            
+            if is_supervised:
+                model_info["target"] = target
+                model_info["model_category"] = "supervised"
+                
+                # Get basic model attributes if available
+                try:
+                    if hasattr(model, 'shape'):
+                        training_shape = model.shape
+                        model_info["training_samples"] = training_shape[0] if training_shape else "unknown"
+                except:
+                    pass
+                    
+            elif is_clustering:
+                model_info["model_category"] = "clustering"
+                
+                # Get clustering-specific info
+                try:
+                    if hasattr(model, 'n_cluster_'):
+                        model_info["n_clusters"] = model.n_cluster_
+                    elif hasattr(model, 'get_params'):
+                        params = model.get_params()
+                        if 'n_cluster' in params:
+                            model_info["n_clusters"] = params['n_cluster']
+                except:
+                    pass
+            
+            # Get model parameters
+            try:
+                model_info["parameters"] = model.get_params()
+            except:
+                model_info["parameters"] = model_params
+            
+            response = {
+                "success": True,
+                "model_info": model_info,
+                "training_summary": str(fit_result) if fit_result else "Training completed successfully"
+            }
+            
+            # Add evaluation metrics if available and it's supervised
+            if is_supervised and test_table:
+                try:
+                    if hasattr(model, 'score'):
+                        score = model.score()
+                        response["test_score"] = score
+                    if hasattr(model, 'classification_report') and 'classifier' in model_type:
+                        # For classification models
+                        report = model.classification_report()
+                        response["classification_metrics"] = _to_json_serializable(report.values)
+                except Exception as e:
+                    response["evaluation_note"] = f"Could not compute evaluation metrics: {str(e)}"
+            
+            return response
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Model trained but failed to retrieve information: {str(e)}",
+                "model_name": model_name
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in train_model: {str(e)}"
+        }
+
 
 @mcp.tool()
-def list_models():
-    """List trained models."""
-    return {"models": ["placeholder_model1", "placeholder_model2"]}
+def predict(
+    table: str, 
+    model_name: str, 
+    output_name: str = None,
+    features: list = None,
+    prediction_type: str = "prediction"
+) -> dict:
+    """
+    Make predictions using a trained model.
+    
+    Args:
+        table (str): Table name or vdf_id from cache to make predictions on
+        model_name (str): Name of the trained model to use
+        output_name (str, optional): Name for the prediction column. If None, auto-generated.
+        features (list, optional): List of feature columns to use. If None, uses model's features.
+        prediction_type (str): Type of prediction for classification models:
+            - "prediction": Class predictions (default)
+            - "probability": Prediction probabilities
+    
+    Returns:
+        dict: Prediction results with sample data and metadata
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        # Check if model exists
+        try:
+            model = load_model(model_name)
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to load model '{model_name}': {str(e)}"
+            }
+        
+        # Get prediction data (from cache or table)
+        if table in _vdf_cache:
+            pred_vdf = _vdf_cache[table]
+            table_info = f"cached vDataFrame '{table}'"
+        else:
+            try:
+                pred_vdf = vp.vDataFrame(table)
+                table_info = f"table '{table}'"
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"Failed to load prediction data from {table}: {str(e)}"
+                }
+        
+        # Use model's features if not specified
+        if features is None:
+            if hasattr(model, 'X'):
+                features = model.X
+            else:
+                return {
+                    "success": False,
+                    "error": "Could not determine features from model and no features provided"
+                }
+        
+        # Validate features exist in data
+        available_columns = pred_vdf.get_columns()
+        missing_features = [f for f in features if f not in available_columns]
+        if missing_features:
+            return {
+                "success": False,
+                "error": f"Features not found in prediction data: {missing_features}. Available: {available_columns}"
+            }
+        
+        # Generate output name if not provided
+        if not output_name:
+            output_name = f"prediction_{gen_name()}"
+        
+        try:
+            # Make predictions based on model type and prediction type
+            is_classifier = 'classifier' in model._model_type.lower() if hasattr(model, '_model_type') else False
+            
+            if is_classifier and prediction_type == "probability":
+                # For classification probability predictions
+                if hasattr(model, 'predict_proba'):
+                    result_vdf = model.predict_proba(pred_vdf, features, output_name)
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Model '{model_name}' does not support probability predictions"
+                    }
+            else:
+                # Regular predictions (classification or regression)
+                result_vdf = model.predict(pred_vdf, features, output_name)
+            
+            # Get prediction results info
+            result_shape = result_vdf.shape()
+            result_columns = result_vdf.get_columns()
+            
+            # Get sample of predictions
+            sample_size = min(10, result_shape[0])
+            if sample_size > 0:
+                try:
+                    sample_data = result_vdf.head(sample_size).to_pandas().to_dict('records')
+                    sample_data = _to_json_serializable(sample_data)
+                except Exception:
+                    sample_data = []
+            else:
+                sample_data = []
+            
+            return {
+                "success": True,
+                "model_name": model_name,
+                "prediction_table": table_info,
+                "prediction_column": output_name,
+                "prediction_type": prediction_type,
+                "total_predictions": result_shape[0],
+                "result_columns": [col.strip('"') for col in result_columns],
+                "sample_predictions": sample_data,
+                "model_info": {
+                    "model_type": getattr(model, '_model_type', 'unknown'),
+                    "features_used": [f.strip('"') for f in features]
+                }
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to make predictions: {str(e)}"
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in predict: {str(e)}"
+        }
+
+
+@mcp.tool()
+def list_models(model_type_filter: str = None, limit: int = 50) -> dict:
+    """
+    List all trained models stored in the Vertica database.
+    
+    Args:
+        model_type_filter (str, optional): Filter by model type (e.g., 'LINEAR_REGRESSION', 'RF_CLASSIFIER')
+        limit (int): Maximum number of models to return (default: 50)
+    
+    Returns:
+        dict: List of models with their details
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        # Build query to get models from the MODELS system table
+        base_query = """
+        SELECT 
+            schema_name,
+            model_name,
+            model_type,
+            category,
+            owner_name,
+            create_time
+        FROM MODELS
+        """
+        
+        conditions = []
+        if model_type_filter:
+            conditions.append(f"UPPER(model_type) LIKE UPPER('%{model_type_filter}%')")
+        
+        if conditions:
+            base_query += " WHERE " + " AND ".join(conditions)
+        
+        base_query += f" ORDER BY create_time DESC LIMIT {limit}"
+        
+        try:
+            result = _executeSQL(
+                query=base_query,
+                method="fetchall"
+            )
+            
+            models = []
+            for row in result:
+                model_info = {
+                    "schema_name": row[0],
+                    "model_name": row[1], 
+                    "full_name": f"{row[0]}.{row[1]}",
+                    "model_type": row[2],
+                    "category": row[3],
+                    "owner": row[4],
+                    "created_at": str(row[5]) if row[5] else None
+                }
+                
+                # Try to get additional model details
+                try:
+                    full_model_name = f"{row[0]}.{row[1]}"
+                    # Get model summary for additional info
+                    summary_query = f"""
+                    SELECT GET_MODEL_SUMMARY(USING PARAMETERS model_name = '{full_model_name}')
+                    """
+                    summary_result = _executeSQL(
+                        query=summary_query,
+                        method="fetchfirstelem"
+                    )
+                    if summary_result:
+                        # Extract useful info from summary (this is model-specific)
+                        summary_text = str(summary_result)
+                        model_info["summary_available"] = True
+                        if "predictor" in summary_text.lower():
+                            model_info["has_predictors"] = True
+                except Exception:
+                    # If we can't get summary, that's okay
+                    model_info["summary_available"] = False
+                
+                models.append(model_info)
+            
+            return {
+                "success": True,
+                "models": models,
+                "count": len(models),
+                "filter_applied": model_type_filter,
+                "available_model_types": list(AVAILABLE_MODELS.keys())
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to query models: {str(e)}"
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in list_models: {str(e)}"
+        }
 
 
 # -----------------------------

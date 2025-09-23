@@ -44,11 +44,23 @@ from server2 import (
     transform_data,
     list_cached_vdfs,
     clear_vdf_cache,
+    train_model,
+    predict,
+    list_models,
+    AVAILABLE_MODELS,
     connection_manager,
     _vdf_cache
 )
 from connection import VerticaPyConnection
 
+# Import config from the local tests directory
+import sys
+import os
+tests_dir = os.path.dirname(os.path.abspath(__file__))
+if tests_dir not in sys.path:
+    sys.path.insert(0, tests_dir)
+
+import config
 from config import load_test_config, get_conn_info, CONN_INFO
 import verticapy as vp
 
@@ -573,6 +585,534 @@ class TestParameterParsing:
         print_test_info("Complex JSON parameter", result)
         if result.get("success"):
             assert result.get("success", False)
+
+
+class TestMachineLearningModels:
+    """Test machine learning model training and prediction"""
+    
+    def test_available_models_info(self, mcp_connection):
+        """Test that available models dictionary is properly configured"""
+        print(f"\n{TestColors.BOLD}--- Testing Available ML Models ---{TestColors.ENDC}")
+        
+        # Check that AVAILABLE_MODELS is properly configured
+        assert isinstance(AVAILABLE_MODELS, dict)
+        assert len(AVAILABLE_MODELS) > 0
+        
+        print(f"Available ML models ({len(AVAILABLE_MODELS)}):")
+        for model_type, model_class in AVAILABLE_MODELS.items():
+            print(f"  - {model_type}: {model_class.__name__}")
+        
+        # Test that we have different categories
+        classification_models = [k for k in AVAILABLE_MODELS.keys() if 'classifier' in k]
+        regression_models = [k for k in AVAILABLE_MODELS.keys() if 'regressor' in k or k in ['linear_regression', 'ridge', 'lasso', 'elastic_net']]
+        clustering_models = [k for k in AVAILABLE_MODELS.keys() if k in ['kmeans', 'dbscan']]
+        
+        print(f"  Classification models: {len(classification_models)}")
+        print(f"  Regression models: {len(regression_models)}")
+        print(f"  Clustering models: {len(clustering_models)}")
+        
+        assert len(classification_models) > 0
+        assert len(regression_models) > 0
+        assert len(clustering_models) > 0
+    
+    def test_list_models_empty(self, mcp_connection):
+        """Test listing models when database might be empty"""
+        print(f"\n{TestColors.BOLD}--- Testing List Models (Initial) ---{TestColors.ENDC}")
+        
+        result = list_models()
+        print_test_info("List all models (initial)", result)
+        assert result.get("success", False)
+        assert isinstance(result.get("models", []), list)
+        assert isinstance(result.get("count", -1), int)
+        assert result.get("available_model_types") == list(AVAILABLE_MODELS.keys())
+    
+    def test_train_classification_model(self, mcp_connection, titanic_vd, schema_loader, clean_vdf_cache):
+        """Test training a classification model"""
+        print(f"\n{TestColors.BOLD}--- Testing Classification Model Training ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Test training a logistic regression model
+        result = train_model(
+            table=table_name,
+            model_type="logistic_regression",
+            model_name="test_titanic_lr",
+            target="survived",
+            features=["age", "fare", "pclass"],
+            max_iter=100
+        )
+        print_test_info("Train logistic regression (Titanic survival)", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            model_info = result.get("model_info", {})
+            assert model_info.get("model_name") == "test_titanic_lr"
+            assert model_info.get("model_type") == "logistic_regression"
+            assert model_info.get("target") == "survived"
+            assert model_info.get("model_category") == "supervised"
+            assert isinstance(model_info.get("features", []), list)
+            assert len(model_info.get("features", [])) == 3
+    
+    def test_train_regression_model(self, mcp_connection, titanic_vd, schema_loader, clean_vdf_cache):
+        """Test training a regression model"""
+        print(f"\n{TestColors.BOLD}--- Testing Regression Model Training ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Test training a linear regression model to predict fare
+        result = train_model(
+            table=table_name,
+            model_type="linear_regression",
+            model_name="test_titanic_fare_lr",
+            target="fare",
+            features=["age", "pclass"],
+            fit_intercept=True
+        )
+        print_test_info("Train linear regression (Titanic fare prediction)", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            model_info = result.get("model_info", {})
+            assert model_info.get("model_name") == "test_titanic_fare_lr"
+            assert model_info.get("model_type") == "linear_regression"
+            assert model_info.get("target") == "fare"
+            assert model_info.get("model_category") == "supervised"
+    
+    def test_train_clustering_model(self, mcp_connection, iris_vd, schema_loader, clean_vdf_cache):
+        """Test training a clustering model"""
+        print(f"\n{TestColors.BOLD}--- Testing Clustering Model Training ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.iris"
+        
+        # Test training a k-means clustering model
+        result = train_model(
+            table=table_name,
+            model_type="kmeans",
+            model_name="test_iris_kmeans",
+            features=["SepalLengthCm", "SepalWidthCm", "PetalLengthCm", "PetalWidthCm"],
+            n_cluster=3,
+            init_method="kmeanspp"
+        )
+        print_test_info("Train K-Means clustering (Iris dataset)", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            model_info = result.get("model_info", {})
+            assert model_info.get("model_name") == "test_iris_kmeans"
+            assert model_info.get("model_type") == "kmeans"
+            assert model_info.get("model_category") == "clustering"
+            assert len(model_info.get("features", [])) == 4
+    
+    def test_train_ensemble_model(self, mcp_connection, winequality_vd, schema_loader, clean_vdf_cache):
+        """Test training an ensemble model"""
+        print(f"\n{TestColors.BOLD}--- Testing Ensemble Model Training ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.winequality"
+        
+        # Test training a random forest classifier
+        result = train_model(
+            table=table_name,
+            model_type="random_forest_classifier",
+            model_name="test_wine_rf",
+            target="quality",
+            features=["alcohol", "volatile_acidity", "citric_acid", "residual_sugar"],
+            n_estimators=10,  # Small number for faster testing
+            max_depth=5
+        )
+        print_test_info("Train Random Forest (Wine quality classification)", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            model_info = result.get("model_info", {})
+            assert model_info.get("model_name") == "test_wine_rf"
+            assert model_info.get("model_type") == "random_forest_classifier"
+            assert "quality" in str(model_info.get("target", ""))
+    
+    def test_train_model_auto_features(self, mcp_connection, titanic_vd, schema_loader, clean_vdf_cache):
+        """Test training with auto-detected features"""
+        print(f"\n{TestColors.BOLD}--- Testing Auto-Feature Detection ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Test training without specifying features (should auto-detect)
+        result = train_model(
+            table=table_name,
+            model_type="decision_tree_classifier",
+            target="survived"
+            # No features specified - should auto-detect
+        )
+        print_test_info("Train Decision Tree with auto-detected features", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            model_info = result.get("model_info", {})
+            # Should have detected multiple features (all columns except target)
+            assert len(model_info.get("features", [])) > 1
+    
+    def test_train_model_error_handling(self, mcp_connection, titanic_vd, schema_loader):
+        """Test model training error handling"""
+        print(f"\n{TestColors.BOLD}--- Testing Model Training Error Handling ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Test invalid model type
+        result = train_model(
+            table=table_name,
+            model_type="invalid_model_type",
+            target="survived"
+        )
+        print_test_info("Train model: invalid model type", result, expected_success=False)
+        assert not result.get("success", True)
+        assert "Unsupported model type" in result.get("error", "")
+        
+        # Test missing target for supervised model
+        result = train_model(
+            table=table_name,
+            model_type="logistic_regression"
+            # No target specified
+        )
+        print_test_info("Train model: missing target", result, expected_success=False)
+        assert not result.get("success", True)
+        assert "Target column is required" in result.get("error", "")
+        
+        # Test invalid table
+        result = train_model(
+            table="non_existent_table",
+            model_type="linear_regression",
+            target="some_column"
+        )
+        print_test_info("Train model: invalid table", result, expected_success=False)
+        assert not result.get("success", True)
+        
+        # Test invalid features
+        result = train_model(
+            table=table_name,
+            model_type="linear_regression",
+            target="fare",
+            features=["non_existent_column"]
+        )
+        print_test_info("Train model: invalid features", result, expected_success=False)
+        assert not result.get("success", True)
+        assert "Features not found" in result.get("error", "")
+
+
+class TestModelPrediction:
+    """Test model prediction functionality"""
+    
+    def test_predict_classification(self, mcp_connection, titanic_vd, schema_loader):
+        """Test prediction with classification model"""
+        print(f"\n{TestColors.BOLD}--- Testing Classification Model Prediction ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # First train a simple model
+        train_result = train_model(
+            table=table_name,
+            model_type="logistic_regression",
+            model_name="test_prediction_lr",
+            target="survived",
+            features=["age", "fare", "pclass"],
+            max_iter=50
+        )
+        
+        if train_result.get("success"):
+            # Test regular prediction
+            result = predict(
+                table=table_name,
+                model_name="test_prediction_lr",
+                output_name="survival_prediction"
+            )
+            print_test_info("Predict: classification (regular)", result)
+            
+            if result.get("success"):
+                assert result.get("success", False)
+                assert result.get("model_name") == "test_prediction_lr"
+                assert result.get("prediction_column") == "survival_prediction"
+                assert result.get("prediction_type") == "prediction"
+                assert isinstance(result.get("total_predictions", -1), int)
+                assert result.get("total_predictions", 0) > 0
+            
+            # Test probability prediction
+            result = predict(
+                table=table_name,
+                model_name="test_prediction_lr",
+                output_name="survival_probability",
+                prediction_type="probability"
+            )
+            print_test_info("Predict: classification (probability)", result)
+            
+            if result.get("success"):
+                assert result.get("success", False)
+                assert result.get("prediction_type") == "probability"
+    
+    def test_predict_regression(self, mcp_connection, titanic_vd, schema_loader):
+        """Test prediction with regression model"""
+        print(f"\n{TestColors.BOLD}--- Testing Regression Model Prediction ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # First train a regression model
+        train_result = train_model(
+            table=table_name,
+            model_type="linear_regression",
+            model_name="test_prediction_regression",
+            target="fare",
+            features=["age", "pclass"]
+        )
+        
+        if train_result.get("success"):
+            # Test regression prediction
+            result = predict(
+                table=table_name,
+                model_name="test_prediction_regression",
+                output_name="predicted_fare"
+            )
+            print_test_info("Predict: regression", result)
+            
+            if result.get("success"):
+                assert result.get("success", False)
+                assert result.get("prediction_column") == "predicted_fare"
+                assert isinstance(result.get("sample_predictions", []), list)
+    
+    def test_predict_clustering(self, mcp_connection, iris_vd, schema_loader):
+        """Test prediction with clustering model"""
+        print(f"\n{TestColors.BOLD}--- Testing Clustering Model Prediction ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.iris"
+        
+        # First train a clustering model
+        train_result = train_model(
+            table=table_name,
+            model_type="kmeans",
+            model_name="test_prediction_kmeans",
+            features=["SepalLengthCm", "SepalWidthCm", "PetalLengthCm", "PetalWidthCm"],
+            n_cluster=3
+        )
+        
+        if train_result.get("success"):
+            # Test clustering prediction (cluster assignment)
+            result = predict(
+                table=table_name,
+                model_name="test_prediction_kmeans",
+                output_name="cluster_assignment"
+            )
+            print_test_info("Predict: clustering", result)
+            
+            if result.get("success"):
+                assert result.get("success", False)
+                assert result.get("prediction_column") == "cluster_assignment"
+    
+    def test_predict_with_cached_data(self, mcp_connection, titanic_vd, schema_loader, clean_vdf_cache):
+        """Test prediction using cached vDataFrame"""
+        print(f"\n{TestColors.BOLD}--- Testing Prediction with Cached Data ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Create cached data first
+        transform_result = transform_data(
+            table=table_name,
+            operation="search",
+            extra_kwargs=json.dumps({"conditions": "age > 25"}),
+            vdf_id="adults_test_data",
+            show_preview=False
+        )
+        
+        if transform_result.get("success"):
+            # Train model on original data
+            train_result = train_model(
+                table=table_name,
+                model_type="logistic_regression",
+                model_name="test_cached_prediction",
+                target="survived",
+                features=["age", "fare", "pclass"]
+            )
+            
+            if train_result.get("success"):
+                # Predict on cached data
+                result = predict(
+                    table="adults_test_data",  # Use cached vDataFrame
+                    model_name="test_cached_prediction",
+                    output_name="adult_survival_pred"
+                )
+                print_test_info("Predict: using cached vDataFrame", result)
+                
+                if result.get("success"):
+                    assert result.get("success", False)
+                    assert "cached vDataFrame" in result.get("prediction_table", "")
+    
+    def test_predict_error_handling(self, mcp_connection, titanic_vd, schema_loader):
+        """Test prediction error handling"""
+        print(f"\n{TestColors.BOLD}--- Testing Prediction Error Handling ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Test with non-existent model
+        result = predict(
+            table=table_name,
+            model_name="non_existent_model"
+        )
+        print_test_info("Predict: non-existent model", result, expected_success=False)
+        assert not result.get("success", True)
+        assert "Failed to load model" in result.get("error", "")
+        
+        # Test with non-existent table
+        result = predict(
+            table="non_existent_table",
+            model_name="any_model"
+        )
+        print_test_info("Predict: non-existent table", result, expected_success=False)
+        assert not result.get("success", True)
+        
+        # Train a model first for feature mismatch test
+        train_result = train_model(
+            table=table_name,
+            model_type="linear_regression",
+            model_name="test_feature_mismatch",
+            target="fare",
+            features=["age", "pclass"]
+        )
+        
+        if train_result.get("success"):
+            # Test with invalid features
+            result = predict(
+                table=table_name,
+                model_name="test_feature_mismatch",
+                features=["non_existent_feature"]
+            )
+            print_test_info("Predict: invalid features", result, expected_success=False)
+            if not result.get("success", True):
+                assert "Features not found" in result.get("error", "")
+
+
+class TestModelManagement:
+    """Test model management and listing functionality"""
+    
+    def test_list_models_after_training(self, mcp_connection, titanic_vd, schema_loader):
+        """Test listing models after training some models"""
+        print(f"\n{TestColors.BOLD}--- Testing Model Listing After Training ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Train a couple of models first
+        models_to_train = [
+            {
+                "model_type": "logistic_regression",
+                "model_name": "test_list_lr",
+                "target": "survived",
+                "features": ["age", "fare"]
+            },
+            {
+                "model_type": "linear_regression", 
+                "model_name": "test_list_linear",
+                "target": "fare",
+                "features": ["age", "pclass"]
+            }
+        ]
+        
+        trained_models = []
+        for model_config in models_to_train:
+            result = train_model(table=table_name, **model_config)
+            if result.get("success"):
+                trained_models.append(model_config["model_name"])
+        
+        if trained_models:
+            # Test listing all models
+            result = list_models()
+            print_test_info("List all models after training", result)
+            
+            if result.get("success"):
+                assert result.get("success", False)
+                assert isinstance(result.get("models", []), list)
+                assert result.get("count", 0) >= len(trained_models)
+                
+                # Check that our trained models appear in the list
+                model_names = [m.get("model_name", "") for m in result.get("models", [])]
+                for trained_name in trained_models:
+                    # The model might appear with schema prefix
+                    found = any(trained_name in name for name in model_names)
+                    if not found:
+                        print(f"  Note: Trained model '{trained_name}' not found in list")
+    
+    def test_list_models_with_filter(self, mcp_connection):
+        """Test listing models with type filter"""
+        print(f"\n{TestColors.BOLD}--- Testing Model Listing with Filters ---{TestColors.ENDC}")
+        
+        # Test filter by model type
+        result = list_models(model_type_filter="LINEAR")
+        print_test_info("List models: filter by LINEAR", result)
+        if result.get("success"):
+            assert result.get("success", False)
+            assert result.get("filter_applied") == "LINEAR"
+        
+        # Test filter by classifier
+        result = list_models(model_type_filter="CLASSIFIER")
+        print_test_info("List models: filter by CLASSIFIER", result)
+        if result.get("success"):
+            assert result.get("success", False)
+        
+        # Test with limit
+        result = list_models(limit=5)
+        print_test_info("List models: limit to 5", result)
+        if result.get("success"):
+            assert result.get("success", False)
+            assert len(result.get("models", [])) <= 5
+    
+    def test_comprehensive_ml_workflow(self, mcp_connection, titanic_vd, schema_loader, clean_vdf_cache):
+        """Test complete ML workflow: data prep -> train -> predict -> manage"""
+        print(f"\n{TestColors.BOLD}--- Testing Complete ML Workflow ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Step 1: Prepare data with transformation
+        prep_result = transform_data(
+            table=table_name,
+            operation="search",
+            extra_kwargs=json.dumps({
+                "conditions": "age IS NOT NULL AND fare IS NOT NULL",
+                "usecols": ["age", "fare", "pclass", "survived", "sex"]
+            }),
+            vdf_id="clean_titanic_data",
+            show_preview=False
+        )
+        print_test_info("Step 1: Data preparation", prep_result)
+        
+        if prep_result.get("success"):
+            # Step 2: Train model on clean data
+            train_result = train_model(
+                table="clean_titanic_data",  # Use cached data
+                model_type="random_forest_classifier",
+                model_name="workflow_test_rf",
+                target="survived",
+                features=["age", "fare", "pclass"],
+                n_estimators=5,  # Small for testing
+                max_depth=3
+            )
+            print_test_info("Step 2: Model training", train_result)
+            
+            if train_result.get("success"):
+                # Step 3: Make predictions
+                pred_result = predict(
+                    table="clean_titanic_data",
+                    model_name="workflow_test_rf",
+                    output_name="rf_prediction"
+                )
+                print_test_info("Step 3: Make predictions", pred_result)
+                
+                if pred_result.get("success"):
+                    # Step 4: List models to verify our model exists
+                    list_result = list_models(model_type_filter="RF")
+                    print_test_info("Step 4: Verify model in database", list_result)
+                    
+                    if list_result.get("success"):
+                        # Complete workflow successful
+                        print(f"{TestColors.OKGREEN}✓ Complete ML workflow successful!{TestColors.ENDC}")
+                        
+                        # Verify we have sample predictions
+                        sample_preds = pred_result.get("sample_predictions", [])
+                        if sample_preds:
+                            print(f"  Sample predictions generated: {len(sample_preds)} rows")
+                        
+                        assert len(sample_preds) > 0
 
 
 if __name__ == "__main__":

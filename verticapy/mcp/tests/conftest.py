@@ -55,6 +55,14 @@ from server2 import (
 )
 from connection import VerticaPyConnection
 
+# Import config from the local tests directory
+import sys
+import os
+tests_dir = os.path.dirname(os.path.abspath(__file__))
+if tests_dir not in sys.path:
+    sys.path.insert(0, tests_dir)
+
+import config
 from config import load_test_config, get_conn_info
 
 
