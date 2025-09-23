@@ -1393,12 +1393,23 @@ def train_model(
                 "error": f"Unsupported model type '{model_type}'. Available types: {list(AVAILABLE_MODELS.keys())}"
             }
         
+        # Determine if it's a supervised model (early validation)
+        is_supervised = model_type not in ["kmeans", "dbscan"]
+        is_clustering = model_type in ["kmeans", "dbscan"]
+        
+        # Validate target requirement for supervised models (before expensive operations)
+        if is_supervised and not target:
+            return {
+                "success": False, 
+                "error": "Target column is required for supervised learning models"
+            }
+        
         # Get model class
         ModelClass = AVAILABLE_MODELS[model_type]
         
         # Generate model name if not provided
         if not model_name:
-            model_name = f"mcp_{model_type}_{gen_name()}"
+            model_name = f"mcp_{model_type}_{gen_name([model_type, 'model'])}"
         
         # Get training data (from cache or table)
         if table in _vdf_cache:
@@ -1413,16 +1424,6 @@ def train_model(
                     "success": False,
                     "error": f"Failed to load training data from {table}: {str(e)}"
                 }
-        
-        # Determine if it's a supervised model
-        is_supervised = model_type not in ["kmeans", "dbscan"]
-        is_clustering = model_type in ["kmeans", "dbscan"]
-        
-        if is_supervised and not target:
-            return {
-                "success": False, 
-                "error": "Target column is required for supervised learning models"
-            }
         
         # Auto-detect features if not provided
         if features is None:
