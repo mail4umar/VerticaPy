@@ -64,7 +64,7 @@ class VerticaPyConnection:
         """Disconnect from Vertica database."""
         try:
             if self.is_connected:
-                vp.close_connection(self.connection_name)
+                vp.close_connection()  # close_connection() takes no arguments
                 self.is_connected = False
                 return True, "Successfully disconnected from Vertica database"
             else:

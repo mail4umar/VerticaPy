@@ -499,7 +499,7 @@ class TestMultipleDatasets:
             assert result.get("success", False)
         
         # Test column stats
-        result = column_stats(table_name, "sepal_length", "mean")
+        result = column_stats(table_name, "SepalLengthCm", "mean")
         print_test_info("Iris: sepal_length mean", result)
         if result.get("success"):
             assert result.get("success", False)
