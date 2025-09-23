@@ -14,9 +14,10 @@ The test suite thoroughly tests all MCP tools provided by `server2.py`, includin
 - **Error Handling**: Comprehensive error handling and edge case testing
 - **Parameter Parsing**: Testing different parameter formats and JSON parsing
 
+
 ## Files
 
-- `test.py` - Main comprehensive test suite
+- `test_pytest.py` - Main comprehensive test suite (pytest-based)
 - `config.py` - Test configuration management
 - `test_config.conf.example` - Example configuration file
 - `run_tests.py` - Simple test runner script
@@ -69,6 +70,7 @@ python run_tests.py
 
 The test runner automatically detects pytest and falls back to unittest if needed.
 
+
 ### Method 2: Using pytest directly (Recommended)
 
 ```bash
@@ -86,16 +88,17 @@ python run_tests.py --framework pytest --verbose
 python run_tests.py --framework unittest
 ```
 
+
 ### Method 4: Using unittest directly
 
 ```bash
-cd verticapy/mcp/tests
-python test.py
+# Not applicable (no unittest-based test file retained)
 ```
 
 ## Test Structure
 
-The test suite is organized into the following test categories:
+
+The test suite is organized into the following test categories (all in `test_pytest.py`):
 
 1. **Connection Management** (`test_01_connection_management`)
    - Tests database connection establishment
