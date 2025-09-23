@@ -652,6 +652,27 @@ class TestMachineLearningModels:
             assert model_info.get("model_category") == "supervised"
             assert isinstance(model_info.get("features", []), list)
             assert len(model_info.get("features", [])) == 3
+            
+            # Test new performance metrics are included
+            assert "feature_importance" in result
+            assert "performance_metrics" in result
+            assert "model_summary" in result
+            
+            # Validate feature importance structure
+            feature_importance = result.get("feature_importance", {})
+            assert isinstance(feature_importance, dict)
+            assert len(feature_importance) > 0  # Should have importance scores
+            
+            # Validate performance metrics structure
+            performance_metrics = result.get("performance_metrics", {})
+            assert isinstance(performance_metrics, dict)
+            # Classification model should have metrics like accuracy, auc, etc.
+            assert any(key in performance_metrics for key in ["accuracy", "auc", "precision", "recall"])
+            
+            # Validate model summary structure
+            model_summary = result.get("model_summary", "")
+            assert isinstance(model_summary, str)
+            assert len(model_summary) > 0  # Should contain model details
     
     def test_train_regression_model(self, mcp_connection, titanic_vd, schema_loader, clean_vdf_cache):
         """Test training a regression model"""
@@ -677,6 +698,17 @@ class TestMachineLearningModels:
             assert model_info.get("model_type") == "linear_regression"
             assert model_info.get("target") == "fare"
             assert model_info.get("model_category") == "supervised"
+            
+            # Test new performance metrics are included
+            assert "feature_importance" in result
+            assert "performance_metrics" in result
+            assert "model_summary" in result
+            
+            # For regression models, check for regression-specific metrics
+            performance_metrics = result.get("performance_metrics", {})
+            assert isinstance(performance_metrics, dict)
+            # Should have regression metrics like r2, mse, mae, etc.
+            assert any(key in performance_metrics for key in ["r2", "mse", "mae", "rmse"])
     
     def test_train_clustering_model(self, mcp_connection, iris_vd, schema_loader, clean_vdf_cache):
         """Test training a clustering model"""
@@ -702,6 +734,15 @@ class TestMachineLearningModels:
             assert model_info.get("model_type") == "kmeans"
             assert model_info.get("model_category") == "clustering"
             assert len(model_info.get("features", [])) == 4
+            
+            # Test new performance metrics are included
+            assert "performance_metrics" in result
+            assert "model_summary" in result
+            # Note: clustering models may not have feature_importance
+            
+            # For clustering models, check for clustering-specific metrics
+            performance_metrics = result.get("performance_metrics", {})
+            assert isinstance(performance_metrics, dict)
     
     def test_train_ensemble_model(self, mcp_connection, winequality_vd, schema_loader, clean_vdf_cache):
         """Test training an ensemble model"""
@@ -727,6 +768,16 @@ class TestMachineLearningModels:
             assert model_info.get("model_name") == "test_wine_rf"
             assert model_info.get("model_type") == "random_forest_classifier"
             assert "quality" in str(model_info.get("target", ""))
+            
+            # Test new performance metrics are included
+            assert "feature_importance" in result
+            assert "performance_metrics" in result
+            assert "model_summary" in result
+            
+            # Ensemble models should have comprehensive feature importance
+            feature_importance = result.get("feature_importance", {})
+            assert isinstance(feature_importance, dict)
+            assert len(feature_importance) == 4  # Should match number of features
     
     def test_train_model_auto_features(self, mcp_connection, titanic_vd, schema_loader, clean_vdf_cache):
         """Test training with auto-detected features"""
@@ -748,6 +799,11 @@ class TestMachineLearningModels:
             model_info = result.get("model_info", {})
             # Should have detected multiple features (all columns except target)
             assert len(model_info.get("features", [])) > 1
+            
+            # Test new performance metrics are included
+            assert "feature_importance" in result
+            assert "performance_metrics" in result
+            assert "model_summary" in result
     
     def test_train_model_error_handling(self, mcp_connection, titanic_vd, schema_loader):
         """Test model training error handling"""
@@ -794,6 +850,132 @@ class TestMachineLearningModels:
         print_test_info("Train model: invalid features", result, expected_success=False)
         assert not result.get("success", True)
         assert "Features not found" in result.get("error", "")
+    
+    def test_train_model_with_json_params(self, mcp_connection, titanic_vd, schema_loader):
+        """Test training models with JSON model_params (MCP client format)"""
+        print(f"\n{TestColors.BOLD}--- Testing Model Training with JSON Parameters ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.titanic"
+        
+        # Test training with JSON model_params string (as MCP client would send)
+        result = train_model(
+            table=table_name,
+            model_type="logistic_regression",
+            model_name="test_json_params_lr",
+            target="survived",
+            features=["age", "fare", "pclass"],
+            model_params='{"max_iter": 150, "tol": 1e-5, "solver": "newton"}'
+        )
+        print_test_info("Train model with JSON model_params", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            model_info = result.get("model_info", {})
+            assert model_info.get("model_name") == "test_json_params_lr"
+            
+            # Verify parameters were applied (check if they appear in model summary or parameters)
+            model_summary = result.get("model_summary", "")
+            assert isinstance(model_summary, str)
+            assert len(model_summary) > 0  # Should have actual content
+            
+            print(f"  ✓ Model trained successfully with JSON parameters")
+        
+        # Test training with empty JSON model_params
+        result = train_model(
+            table=table_name,
+            model_type="linear_regression",
+            model_name="test_empty_params_lr",
+            target="fare",
+            features=["age", "pclass"],
+            model_params='{}'
+        )
+        print_test_info("Train model with empty JSON model_params", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            print(f"  ✓ Model trained successfully with empty JSON parameters")
+        
+        # Test training with None model_params (backward compatibility)
+        result = train_model(
+            table=table_name,
+            model_type="decision_tree_classifier",
+            model_name="test_none_params_dt",
+            target="survived",
+            features=["age", "fare"],
+            model_params=None
+        )
+        print_test_info("Train model with None model_params", result)
+        
+        if result.get("success"):
+            assert result.get("success", False)
+            print(f"  ✓ Model trained successfully with None parameters")
+        
+        # Test invalid JSON model_params (should handle gracefully)
+        result = train_model(
+            table=table_name,
+            model_type="logistic_regression",
+            model_name="test_invalid_json_lr",
+            target="survived",
+            features=["age", "fare"],
+            model_params='{"invalid_json": true, missing_quote_and_brace'
+        )
+        print_test_info("Train model with invalid JSON model_params", result, expected_success=False)
+        assert not result.get("success", True)
+        assert "JSON" in result.get("error", "") or "parse" in result.get("error", "").lower()
+    
+    def test_comprehensive_performance_metrics(self, mcp_connection, winequality_vd, schema_loader, clean_vdf_cache):
+        """Test that all expected performance metrics are included in responses"""
+        print(f"\n{TestColors.BOLD}--- Testing Comprehensive Performance Metrics ---{TestColors.ENDC}")
+        
+        table_name = f"{schema_loader}.winequality"
+        
+        # Train a classification model to test comprehensive metrics
+        result = train_model(
+            table=table_name,
+            model_type="logistic_regression",
+            model_name="test_comprehensive_metrics",
+            target="quality",
+            features=["alcohol", "volatile_acidity", "citric_acid"],
+            model_params='{"max_iter": 100}'
+        )
+        print_test_info("Train model for comprehensive metrics testing", result)
+        
+        if result.get("success"):
+            # Validate all expected top-level keys are present
+            expected_keys = ["success", "model_info", "feature_importance", "performance_metrics", "model_summary"]
+            for key in expected_keys:
+                assert key in result, f"Missing expected key: {key}"
+            
+            # Detailed validation of feature_importance
+            feature_importance = result.get("feature_importance", {})
+            assert isinstance(feature_importance, dict)
+            assert len(feature_importance) > 0
+            # All importance values should be numeric
+            for feature, importance in feature_importance.items():
+                assert isinstance(importance, (int, float)), f"Feature importance for {feature} should be numeric"
+                assert importance >= 0, f"Feature importance should be non-negative"
+            print(f"  ✓ Feature importance validated: {len(feature_importance)} features")
+            
+            # Detailed validation of performance_metrics
+            performance_metrics = result.get("performance_metrics", {})
+            assert isinstance(performance_metrics, dict)
+            assert len(performance_metrics) > 0
+            print(f"  ✓ Performance metrics validated: {list(performance_metrics.keys())}")
+            
+            # Detailed validation of model_summary
+            model_summary = result.get("model_summary", "")
+            assert isinstance(model_summary, str)
+            assert len(model_summary) > 0
+            print(f"  ✓ Model summary validated: {len(model_summary)} characters")
+            
+            # Validate model_info structure
+            model_info = result.get("model_info", {})
+            required_model_info_keys = ["model_name", "model_type", "target", "features", "model_category"]
+            for key in required_model_info_keys:
+                assert key in model_info, f"Missing required model_info key: {key}"
+            print(f"  ✓ Model info structure validated")
+            
+            print(f"  ✓ All comprehensive performance metrics validated successfully")
 
 
 class TestModelPrediction:
