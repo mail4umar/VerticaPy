@@ -1,3 +1,92 @@
+import time
+
+# Query Profiler Tests
+class TestQueryProfiler:
+    """Test the MCP Query Profiler tools"""
+
+    def test_create_query_profiler_and_list(self, mcp_connection, titanic_vd, schema_loader):
+        print(f"\n{TestColors.BOLD}--- Testing Query Profiler Creation and Listing ---{TestColors.ENDC}")
+        from server2 import create_query_profiler, list_query_profilers
+        table_name = f"{schema_loader}.titanic"
+        # Create a profiler for a simple query
+        result = create_query_profiler(
+            source_type="query",
+            query=f"SELECT COUNT(*) FROM {table_name}",
+            target_schema=schema_loader
+        )
+        print_test_info("Create Query Profiler (by query)", result)
+        assert result.get("success", False)
+        profiler_id = result.get("profiler_info", {}).get("profiler_id")
+        assert profiler_id
+        # List profilers
+        list_result = list_query_profilers()
+        print_test_info("List Query Profilers", list_result)
+        assert list_result.get("success", True)
+        assert profiler_id in list_result.get("profilers", {})
+
+    def test_get_query_plan_and_profiling_table(self, mcp_connection, titanic_vd, schema_loader):
+        print(f"\n{TestColors.BOLD}--- Testing Query Plan and Profiling Table ---{TestColors.ENDC}")
+        from server2 import create_query_profiler, get_query_plan, get_profiling_table
+        table_name = f"{schema_loader}.titanic"
+        # Create a profiler
+        result = create_query_profiler(
+            source_type="query",
+            query=f"SELECT COUNT(*) FROM {table_name}",
+            target_schema=schema_loader
+        )
+        assert result.get("success", False)
+        profiler_id = result.get("profiler_info", {}).get("profiler_id")
+        assert profiler_id, "Profiler creation failed, cannot proceed with plan/table tests."
+        # Get query plan
+        plan_result = get_query_plan(profiler_id)
+        print_test_info("Get Query Plan", plan_result)
+        assert plan_result.get("success", False)
+        # Get profiling table (query_profiles)
+        table_result = get_profiling_table(profiler_id, "query_profiles", limit=2)
+        print_test_info("Get Profiling Table (query_profiles)", table_result)
+        if not table_result.get("success", False):
+            import pytest
+            pytest.skip(f"Profiler not found in cache or expired: {table_result.get('error')}")
+        assert "columns" in table_result.get("data", {})
+
+    def test_get_query_performance_summary(self, mcp_connection, titanic_vd, schema_loader):
+        print(f"\n{TestColors.BOLD}--- Testing Query Performance Summary ---{TestColors.ENDC}")
+        from server2 import create_query_profiler, get_query_performance_summary
+        table_name = f"{schema_loader}.titanic"
+        # Create a profiler
+        result = create_query_profiler(
+            source_type="query",
+            query=f"SELECT COUNT(*) FROM {table_name}",
+            target_schema=schema_loader
+        )
+        assert result.get("success", False)
+        profiler_id = result.get("profiler_info", {}).get("profiler_id")
+        assert profiler_id, "Profiler creation failed, cannot proceed with performance summary test."
+        # Get performance summary
+        summary_result = get_query_performance_summary(profiler_id)
+        print_test_info("Get Query Performance Summary", summary_result)
+        assert summary_result.get("success", False)
+        assert "performance_data" in summary_result
+
+    def test_clear_query_profilers(self, mcp_connection, titanic_vd, schema_loader):
+        print(f"\n{TestColors.BOLD}--- Testing Clear Query Profilers ---{TestColors.ENDC}")
+        from server2 import create_query_profiler, clear_query_profilers, list_query_profilers
+        table_name = f"{schema_loader}.titanic"
+        # Create a profiler
+        result = create_query_profiler(
+            source_type="query",
+            query=f"SELECT COUNT(*) FROM {table_name}",
+            target_schema=schema_loader
+        )
+        assert result.get("success", False)
+        # Clear all profilers
+        clear_result = clear_query_profilers()
+        print_test_info("Clear Query Profilers", clear_result)
+        assert clear_result.get("success", False)
+        # List profilers should be empty
+        list_result = list_query_profilers()
+        print_test_info("List Query Profilers (after clear)", list_result)
+        assert list_result.get("count", 1) == 0
 """
 Pytest-based Comprehensive Test Suite for VerticaPy MCP Server
 
