@@ -1928,31 +1928,589 @@ def list_models(model_type_filter: str = None, limit: int = 50) -> dict:
 # -----------------------------
 # Query Profiling Tools
 # -----------------------------
-@mcp.tool()
-def run_query(query: str):
-    """Execute SQL query (placeholder)."""
-    return {"query": query, "rows": ["row1", "row2"]}
+
+# Import query profiling modules with error handling
+try:
+    from verticapy.performance.vertica.qprof import QueryProfiler
+    from verticapy.performance.vertica.qprof_utility import QprofUtility
+    QUERY_PROFILING_AVAILABLE = True
+except ImportError as e:
+    QueryProfiler = None
+    QprofUtility = None
+    QUERY_PROFILING_AVAILABLE = False
+    QUERY_PROFILING_ERROR = str(e)
 
 @mcp.tool()
-def profile_query(query: str):
-    """Profile query using VerticaPy QueryProfiler (placeholder)."""
-    return {
-        "query": query,
-        "duration_sec": 0,
-        "operators": [
-            {"name": "Scan", "time_sec": 0, "rows": 0},
-        ],
-    }
+def create_query_profiler(
+    source_type: str,
+    query: str = None,
+    transaction_statement_pairs: list = None,
+    target_schema: str = None,
+    key_id: str = None,
+    overwrite: bool = True
+) -> dict:
+    """
+    Create a QueryProfiler instance to analyze query performance.
+    
+    Args:
+        source_type (str): Type of profiling source:
+            - "query": Profile by SQL query
+            - "transaction_statement": Profile by transaction/statement ID pairs
+            - "key_id": Profile by existing key_id and target_schema
+        query (str, optional): SQL query to profile (required for source_type="query")
+        transaction_statement_pairs (list, optional): List of [transaction_id, statement_id] pairs
+            (required for source_type="transaction_statement")
+        target_schema (str, optional): Target schema name (required for key_id or to store results)
+        key_id (str, optional): Existing key ID to load profiling data (required for source_type="key_id")
+        overwrite (bool): Whether to overwrite existing profiling data (default: True)
+    
+    Returns:
+        dict: QueryProfiler creation result with profiler info and available tables
+    """
+    try:
+        # Check if query profiling is available
+        if not QUERY_PROFILING_AVAILABLE:
+            return {
+                "success": False,
+                "error": f"Query profiling not available: {QUERY_PROFILING_ERROR}. Please install required dependencies (e.g., ipywidgets)."
+            }
+        
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        # Create QueryProfiler based on source type
+        try:
+            if source_type.lower() == "query":
+                if not query:
+                    return {
+                        "success": False,
+                        "error": "Query is required for source_type='query'"
+                    }
+                
+                qprof = QueryProfiler(
+                    query,
+                    target_schema=target_schema,
+                    overwrite=overwrite
+                )
+                
+            elif source_type.lower() == "transaction_statement":
+                if not transaction_statement_pairs:
+                    return {
+                        "success": False,
+                        "error": "transaction_statement_pairs is required for source_type='transaction_statement'"
+                    }
+                
+                # Convert list of pairs to tuples
+                pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                qprof = QueryProfiler(
+                    pairs,
+                    target_schema=target_schema,
+                    overwrite=overwrite
+                )
+                
+            elif source_type.lower() == "key_id":
+                if not key_id or not target_schema:
+                    return {
+                        "success": False,
+                        "error": "Both key_id and target_schema are required for source_type='key_id'"
+                    }
+                
+                qprof = QueryProfiler(
+                    key_id=key_id,
+                    target_schema=target_schema
+                )
+                
+            else:
+                return {
+                    "success": False,
+                    "error": f"Invalid source_type '{source_type}'. Must be 'query', 'transaction_statement', or 'key_id'"
+                }
+        
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to create QueryProfiler: {str(e)}"
+            }
+        
+        # Get basic information about the profiler
+        try:
+            # Get available tables
+            available_tables = qprof.get_table()
+            
+            # Get profiler key information if available
+            profiler_info = {
+                "source_type": source_type,
+                "target_schema": target_schema if target_schema else "default",
+                "available_tables": available_tables,
+                "table_count": len(available_tables)
+            }
+            
+            # Add source-specific info
+            if source_type.lower() == "query":
+                profiler_info["query"] = query[:200] + "..." if len(query) > 200 else query
+            elif source_type.lower() == "transaction_statement":
+                profiler_info["transaction_statement_pairs"] = transaction_statement_pairs
+                profiler_info["pair_count"] = len(transaction_statement_pairs)
+            elif source_type.lower() == "key_id":
+                profiler_info["key_id"] = key_id
+            
+            # Store profiler instance globally for other tools to use
+            # Use a simple key based on schema and timestamp
+            import time
+            profiler_key = f"{target_schema}_{int(time.time())}" if target_schema else f"default_{int(time.time())}"
+            
+            # Store in global cache (similar to vdf_cache)
+            global _profiler_cache
+            if '_profiler_cache' not in globals():
+                _profiler_cache = {}
+            _profiler_cache[profiler_key] = qprof
+            
+            profiler_info["profiler_id"] = profiler_key
+            
+            return {
+                "success": True,
+                "profiler_info": profiler_info,
+                "message": f"QueryProfiler created successfully with {len(available_tables)} available tables"
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"QueryProfiler created but failed to get info: {str(e)}"
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in create_query_profiler: {str(e)}"
+        }
 
 @mcp.tool()
-def get_query_plan(query: str):
-    """Get query plan (placeholder)."""
-    return {"query": query, "plan": ["Step1", "Step2"]}
+def get_query_plan(
+    profiler_id: str = None,
+    source_type: str = None,
+    query: str = None,
+    transaction_statement_pairs: list = None,
+    target_schema: str = None,
+    key_id: str = None
+) -> dict:
+    """
+    Get the query execution plan from a QueryProfiler.
+    
+    Args:
+        profiler_id (str, optional): Existing profiler ID from create_query_profiler
+        source_type (str, optional): Type of profiling source (if creating new profiler)
+        query (str, optional): SQL query to profile (for ad-hoc profiling)
+        transaction_statement_pairs (list, optional): Transaction/statement pairs
+        target_schema (str, optional): Target schema name
+        key_id (str, optional): Existing key ID
+    
+    Returns:
+        dict: Query plan information and execution details
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        # Get or create QueryProfiler
+        qprof = None
+        
+        if profiler_id and profiler_id in _profiler_cache:
+            qprof = _profiler_cache[profiler_id]
+        else:
+            # Create ad-hoc profiler
+            if not source_type:
+                source_type = "query"  # Default
+            
+            if source_type.lower() == "query" and query:
+                qprof = QueryProfiler(query, target_schema=target_schema)
+            elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
+                pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                qprof = QueryProfiler(pairs, target_schema=target_schema)
+            elif source_type.lower() == "key_id" and key_id and target_schema:
+                qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
+            else:
+                return {
+                    "success": False,
+                    "error": "Either provide profiler_id or valid parameters to create new profiler"
+                }
+        
+        # Get query plan
+        try:
+            query_plan = qprof.get_qplan()
+            
+            return {
+                "success": True,
+                "query_plan": query_plan,
+                "plan_type": "execution_plan",
+                "source": f"QueryProfiler ({source_type if source_type else 'cached'})"
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to get query plan: {str(e)}"
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in get_query_plan: {str(e)}"
+        }
 
 @mcp.tool()
-def get_query_metrics(query: str):
-    """Get query metrics summary (placeholder)."""
-    return {"query": query, "metrics": {"cpu": 0, "io": 0}}
+def get_profiling_table(
+    table_name: str,
+    profiler_id: str = None,
+    source_type: str = None,
+    query: str = None,
+    transaction_statement_pairs: list = None,
+    target_schema: str = None,
+    key_id: str = None,
+    limit: int = 100
+) -> dict:
+    """
+    Get data from a specific profiling table.
+    
+    Args:
+        table_name (str): Name of the profiling table to retrieve:
+            Available tables: dc_requests_issued, dc_explain_plans, dc_query_executions,
+            dc_plan_activities, dc_scan_events, dc_slow_events, execution_engine_profiles,
+            host_resources, query_events, query_plan_profiles, query_profiles,
+            projection_storage, projection_usage, resource_pool_status, storage_containers,
+            dc_lock_attempts, dc_plan_resources, configuration_parameters, query_consumption,
+            projections, projection_columns, resource_acquisitions, resource_pools
+        profiler_id (str, optional): Existing profiler ID from create_query_profiler
+        source_type (str, optional): Type of profiling source (if creating new profiler)
+        query (str, optional): SQL query to profile (for ad-hoc profiling)
+        transaction_statement_pairs (list, optional): Transaction/statement pairs
+        target_schema (str, optional): Target schema name
+        key_id (str, optional): Existing key ID
+        limit (int): Maximum number of rows to return (default: 100)
+    
+    Returns:
+        dict: Profiling table data and metadata
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        # Get or create QueryProfiler
+        qprof = None
+        
+        if profiler_id and profiler_id in _profiler_cache:
+            qprof = _profiler_cache[profiler_id]
+        else:
+            # Create ad-hoc profiler
+            if not source_type:
+                source_type = "query"  # Default
+            
+            if source_type.lower() == "query" and query:
+                qprof = QueryProfiler(query, target_schema=target_schema)
+            elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
+                pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                qprof = QueryProfiler(pairs, target_schema=target_schema)
+            elif source_type.lower() == "key_id" and key_id and target_schema:
+                qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
+            else:
+                return {
+                    "success": False,
+                    "error": "Either provide profiler_id or valid parameters to create new profiler"
+                }
+        
+        # Get available tables first
+        try:
+            available_tables = qprof.get_table()
+            
+            if table_name not in available_tables:
+                return {
+                    "success": False,
+                    "error": f"Table '{table_name}' not available. Available tables: {available_tables}"
+                }
+        
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to get available tables: {str(e)}"
+            }
+        
+        # Get table data
+        try:
+            table_data = qprof.get_table(table_name)
+            
+            # Convert to JSON-serializable format
+            if hasattr(table_data, 'to_json'):
+                # If it's a vDataFrame, convert to JSON
+                data_json = table_data.to_json()
+                data = json.loads(data_json)
+                
+                # Limit results if needed
+                if isinstance(data, list) and len(data) > limit:
+                    data = data[:limit]
+                    truncated = True
+                else:
+                    truncated = False
+                    
+            elif hasattr(table_data, 'values'):
+                # If it's a TableSample or similar
+                data = _to_json_serializable(table_data.values)
+                if isinstance(data, list) and len(data) > limit:
+                    data = data[:limit]
+                    truncated = True
+                else:
+                    truncated = False
+            else:
+                # Direct serialization
+                data = _to_json_serializable(table_data)
+                truncated = False
+            
+            return {
+                "success": True,
+                "table_name": table_name,
+                "data": data,
+                "row_count": len(data) if isinstance(data, list) else 1,
+                "truncated": truncated,
+                "limit_applied": limit,
+                "available_tables": available_tables
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to get table '{table_name}': {str(e)}",
+                "available_tables": available_tables
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in get_profiling_table: {str(e)}"
+        }
+
+@mcp.tool()
+def get_query_performance_summary(
+    profiler_id: str = None,
+    source_type: str = None,
+    query: str = None,
+    transaction_statement_pairs: list = None,
+    target_schema: str = None,
+    key_id: str = None
+) -> dict:
+    """
+    Get a comprehensive performance summary for the profiled query/queries.
+    
+    Args:
+        profiler_id (str, optional): Existing profiler ID from create_query_profiler
+        source_type (str, optional): Type of profiling source (if creating new profiler)
+        query (str, optional): SQL query to profile (for ad-hoc profiling)
+        transaction_statement_pairs (list, optional): Transaction/statement pairs
+        target_schema (str, optional): Target schema name
+        key_id (str, optional): Existing key ID
+    
+    Returns:
+        dict: Comprehensive performance analysis including execution time, resource usage,
+              query plan, and optimization recommendations
+    """
+    try:
+        # Ensure connection
+        success, message = connection_manager.ensure_connected()
+        if not success:
+            return {"success": False, "error": f"Connection failed: {message}"}
+        
+        # Get or create QueryProfiler
+        qprof = None
+        
+        if profiler_id and profiler_id in _profiler_cache:
+            qprof = _profiler_cache[profiler_id]
+        else:
+            # Create ad-hoc profiler
+            if not source_type:
+                source_type = "query"  # Default
+            
+            if source_type.lower() == "query" and query:
+                qprof = QueryProfiler(query, target_schema=target_schema)
+            elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
+                pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                qprof = QueryProfiler(pairs, target_schema=target_schema)
+            elif source_type.lower() == "key_id" and key_id and target_schema:
+                qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
+            else:
+                return {
+                    "success": False,
+                    "error": "Either provide profiler_id or valid parameters to create new profiler"
+                }
+        
+        # Collect comprehensive performance data
+        performance_summary = {
+            "success": True,
+            "profiling_source": source_type if source_type else "cached"
+        }
+        
+        # 1. Get query plan
+        try:
+            performance_summary["query_plan"] = qprof.get_qplan()
+        except Exception as e:
+            performance_summary["query_plan_error"] = f"Could not get query plan: {str(e)}"
+        
+        # 2. Get key performance tables
+        key_tables = [
+            "query_profiles",
+            "dc_query_executions", 
+            "query_events",
+            "host_resources",
+            "resource_pool_status"
+        ]
+        
+        performance_data = {}
+        
+        for table in key_tables:
+            try:
+                table_data = qprof.get_table(table)
+                if hasattr(table_data, 'to_json'):
+                    data_json = table_data.to_json()
+                    data = json.loads(data_json)
+                elif hasattr(table_data, 'values'):
+                    data = _to_json_serializable(table_data.values)
+                else:
+                    data = _to_json_serializable(table_data)
+                
+                # Limit to first 10 rows for summary
+                if isinstance(data, list) and len(data) > 10:
+                    data = data[:10]
+                
+                performance_data[table] = data
+                
+            except Exception as e:
+                performance_data[f"{table}_error"] = f"Could not get {table}: {str(e)}"
+        
+        performance_summary["performance_data"] = performance_data
+        
+        # 3. Extract key metrics from query_profiles if available
+        if "query_profiles" in performance_data and isinstance(performance_data["query_profiles"], list):
+            try:
+                query_profiles = performance_data["query_profiles"]
+                if len(query_profiles) > 0:
+                    profile = query_profiles[0]  # Take first profile
+                    
+                    metrics = {}
+                    # Extract common performance metrics
+                    for key in ['execution_time', 'execution_time_us', 'queue_time_ms', 
+                               'planning_time_us', 'rows_produced', 'rows_loaded']:
+                        if key in profile:
+                            metrics[key] = profile[key]
+                    
+                    performance_summary["key_metrics"] = metrics
+                    
+            except Exception as e:
+                performance_summary["metrics_extraction_error"] = str(e)
+        
+        # 4. Get available tables list
+        try:
+            performance_summary["available_tables"] = qprof.get_table()
+        except Exception as e:
+            performance_summary["available_tables_error"] = str(e)
+        
+        return performance_summary
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error in get_query_performance_summary: {str(e)}"
+        }
+
+@mcp.tool()
+def list_query_profilers() -> dict:
+    """
+    List all active QueryProfiler instances.
+    
+    Returns:
+        dict: Information about all cached QueryProfiler instances
+    """
+    try:
+        global _profiler_cache
+        
+        if '_profiler_cache' not in globals():
+            _profiler_cache = {}
+        
+        profiler_info = {}
+        
+        for profiler_id, qprof in _profiler_cache.items():
+            try:
+                available_tables = qprof.get_table()
+                
+                profiler_info[profiler_id] = {
+                    "available_tables": available_tables,
+                    "table_count": len(available_tables),
+                    "created": "active"
+                }
+                
+            except Exception as e:
+                profiler_info[profiler_id] = {
+                    "error": f"Could not get info: {str(e)}"
+                }
+        
+        return {
+            "success": True,
+            "profilers": profiler_info,
+            "count": len(_profiler_cache)
+        }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to list query profilers: {str(e)}"
+        }
+
+@mcp.tool()
+def clear_query_profilers(profiler_id: str = None) -> dict:
+    """
+    Clear cached QueryProfiler instances.
+    
+    Args:
+        profiler_id (str, optional): Specific profiler ID to remove. If None, clears all.
+    
+    Returns:
+        dict: Operation result
+    """
+    try:
+        global _profiler_cache
+        
+        if '_profiler_cache' not in globals():
+            _profiler_cache = {}
+        
+        if profiler_id:
+            if profiler_id in _profiler_cache:
+                del _profiler_cache[profiler_id]
+                return {
+                    "success": True,
+                    "message": f"Cleared QueryProfiler '{profiler_id}' from cache",
+                    "remaining_count": len(_profiler_cache)
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"QueryProfiler '{profiler_id}' not found in cache"
+                }
+        else:
+            cleared_count = len(_profiler_cache)
+            _profiler_cache.clear()
+            return {
+                "success": True,
+                "message": f"Cleared all {cleared_count} QueryProfilers from cache",
+                "remaining_count": 0
+            }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to clear profiler cache: {str(e)}"
+        }
 
 
 # -----------------------------
