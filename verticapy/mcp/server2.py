@@ -1413,8 +1413,21 @@ def train_model(
             elif isinstance(model_params, dict):
                 parsed_model_params = model_params
         
-        # Merge with any additional kwargs
-        final_model_params = {**parsed_model_params, **extra_kwargs}
+        # Filter out train_model function parameters from extra_kwargs
+        # These should not be passed to the model constructor
+        train_model_params = {
+            'table', 'model_type', 'model_name', 'target', 'features', 
+            'test_table', 'model_params', 'extra_kwargs'
+        }
+        
+        # Filter extra_kwargs to only include actual model parameters
+        filtered_extra_kwargs = {
+            k: v for k, v in extra_kwargs.items() 
+            if k not in train_model_params
+        }
+        
+        # Merge with any additional kwargs (after filtering)
+        final_model_params = {**parsed_model_params, **filtered_extra_kwargs}
         
         # Ensure connection
         success, message = connection_manager.ensure_connected()
