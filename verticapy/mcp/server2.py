@@ -2265,31 +2265,59 @@ def get_profiling_table(
         try:
             table_data = qprof.get_table(table_name)
             
-            # Convert to JSON-serializable format
-            if hasattr(table_data, 'to_json'):
-                # If it's a vDataFrame, convert to JSON
-                data_json = table_data.to_json()
-                data = json.loads(data_json)
+            # Convert to JSON-serializable format safely
+            try:
+                if hasattr(table_data, 'values'):
+                    # If it's a TableSample or similar, use .values directly
+                    raw_data = _to_json_serializable(table_data.values)
+                elif hasattr(table_data, 'to_pandas'):
+                    # If it's a vDataFrame, convert to pandas first (more reliable)
+                    pandas_df = table_data.to_pandas()
+                    # Limit rows before conversion to avoid memory issues
+                    if len(pandas_df) > limit:
+                        pandas_df = pandas_df.head(limit)
+                        truncated = True
+                    else:
+                        truncated = False
+                    raw_data = _to_json_serializable(pandas_df.to_dict('records'))
+                elif hasattr(table_data, 'to_json'):
+                    # Fallback: try to_json but with better error handling
+                    try:
+                        data_json = table_data.to_json()
+                        # Avoid parsing huge JSON strings that might cause issues
+                        if len(data_json) > 1000000:  # 1MB limit
+                            raise ValueError("JSON data too large, using alternative method")
+                        raw_data = json.loads(data_json)
+                        truncated = False
+                    except (json.JSONDecodeError, ValueError):
+                        # If JSON parsing fails, try pandas approach
+                        if hasattr(table_data, 'to_pandas'):
+                            pandas_df = table_data.to_pandas().head(limit)
+                            raw_data = _to_json_serializable(pandas_df.to_dict('records'))
+                            truncated = len(table_data) > limit if hasattr(table_data, '__len__') else True
+                        else:
+                            raise
+                else:
+                    # Direct serialization
+                    raw_data = _to_json_serializable(table_data)
+                    truncated = False
                 
-                # Limit results if needed
-                if isinstance(data, list) and len(data) > limit:
-                    data = data[:limit]
+                # Apply limit if not already applied
+                if isinstance(raw_data, list) and len(raw_data) > limit and not truncated:
+                    data = raw_data[:limit]
                     truncated = True
                 else:
-                    truncated = False
+                    data = raw_data
                     
-            elif hasattr(table_data, 'values'):
-                # If it's a TableSample or similar
-                data = _to_json_serializable(table_data.values)
-                if isinstance(data, list) and len(data) > limit:
-                    data = data[:limit]
-                    truncated = True
-                else:
-                    truncated = False
-            else:
-                # Direct serialization
-                data = _to_json_serializable(table_data)
-                truncated = False
+            except Exception as conversion_error:
+                # If all conversion methods fail, return a summary
+                return {
+                    "success": False,
+                    "error": f"Failed to convert table data to JSON format: {str(conversion_error)}",
+                    "table_name": table_name,
+                    "available_tables": available_tables,
+                    "suggestion": f"Table '{table_name}' exists but data conversion failed. Try a different table or check data format."
+                }
             
             return {
                 "success": True,
