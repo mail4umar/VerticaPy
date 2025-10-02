@@ -1751,14 +1751,35 @@ def predict(
                     "error": "Could not determine features from model and no features provided"
                 }
         
-        # Validate features exist in data
+        # Get available columns and create a mapping for both quoted and unquoted names
         available_columns = pred_vdf.get_columns()
-        missing_features = [f for f in features if f not in available_columns]
+        column_mapping = {}
+        for col in available_columns:
+            stripped = col.strip('"')
+            column_mapping[col] = col  # exact match
+            column_mapping[stripped] = col  # unquoted -> quoted
+            column_mapping[stripped.lower()] = col  # case-insensitive
+            column_mapping[col.lower()] = col  # quoted case-insensitive
+        
+        # Validate and resolve feature column names
+        resolved_features = []
+        missing_features = []
+        
+        for feature in features:
+            if feature in column_mapping:
+                resolved_features.append(column_mapping[feature])
+            else:
+                missing_features.append(feature)
+        
         if missing_features:
+            available_cols_clean = [col.strip('"') for col in available_columns]
             return {
                 "success": False,
-                "error": f"Features not found in prediction data: {missing_features}. Available: {available_columns}"
+                "error": f"Features not found in prediction data: {missing_features}. Available: {available_cols_clean}"
             }
+        
+        # Use resolved feature names
+        features = resolved_features
         
         # Generate output name if not provided
         if not output_name:
