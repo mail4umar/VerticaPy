@@ -8,8 +8,9 @@ from decimal import Decimal
 import datetime
 import json
 import time
-import verticapy as vp
-import verticapy as vp
+import sys
+import io
+from contextlib import redirect_stdout, redirect_stderr
 from verticapy._utils._sql._sys import _executeSQL
 from verticapy._utils._gen import gen_name
 from connection import VerticaPyConnection
@@ -24,6 +25,26 @@ mcp = FastMCP("verticapy")
 
 # Global connection manager
 connection_manager = VerticaPyConnection()
+
+def suppress_stdout_stderr():
+    """Context manager to suppress stdout and stderr output from VerticaPy operations."""
+    class DummyFile:
+        def write(self, x): pass
+        def flush(self): pass
+    
+    class SuppressOutput:
+        def __enter__(self):
+            self.stdout = sys.stdout
+            self.stderr = sys.stderr
+            sys.stdout = DummyFile()
+            sys.stderr = DummyFile()
+            return self
+        
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            sys.stdout = self.stdout
+            sys.stderr = self.stderr
+    
+    return SuppressOutput()
 
 def _to_json_serializable(obj: Any):
     """
@@ -1996,6 +2017,13 @@ def create_query_profiler(
                 "error": f"Query profiling not available: {QUERY_PROFILING_ERROR}. Please install required dependencies (e.g., ipywidgets)."
             }
         
+        # Check if query profiling is available
+        if not QUERY_PROFILING_AVAILABLE:
+            return {
+                "success": False,
+                "error": f"Query profiling not available: {QUERY_PROFILING_ERROR}"
+            }
+        
         # Ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
@@ -2003,51 +2031,52 @@ def create_query_profiler(
         
         # Create QueryProfiler based on source type
         try:
-            if source_type.lower() == "query":
-                if not query:
+            with suppress_stdout_stderr():
+                if source_type.lower() == "query":
+                    if not query:
+                        return {
+                            "success": False,
+                            "error": "Query is required for source_type='query'"
+                        }
+                    
+                    qprof = QueryProfiler(
+                        query,
+                        target_schema=target_schema,
+                        overwrite=overwrite
+                    )
+                    
+                elif source_type.lower() == "transaction_statement":
+                    if not transaction_statement_pairs:
+                        return {
+                            "success": False,
+                            "error": "transaction_statement_pairs is required for source_type='transaction_statement'"
+                        }
+                    
+                    # Convert list of pairs to tuples
+                    pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                    qprof = QueryProfiler(
+                        pairs,
+                        target_schema=target_schema,
+                        overwrite=overwrite
+                    )
+                    
+                elif source_type.lower() == "key_id":
+                    if not key_id or not target_schema:
+                        return {
+                            "success": False,
+                            "error": "Both key_id and target_schema are required for source_type='key_id'"
+                        }
+                    
+                    qprof = QueryProfiler(
+                        key_id=key_id,
+                        target_schema=target_schema
+                    )
+                    
+                else:
                     return {
                         "success": False,
-                        "error": "Query is required for source_type='query'"
+                        "error": f"Invalid source_type '{source_type}'. Must be 'query', 'transaction_statement', or 'key_id'"
                     }
-                
-                qprof = QueryProfiler(
-                    query,
-                    target_schema=target_schema,
-                    overwrite=overwrite
-                )
-                
-            elif source_type.lower() == "transaction_statement":
-                if not transaction_statement_pairs:
-                    return {
-                        "success": False,
-                        "error": "transaction_statement_pairs is required for source_type='transaction_statement'"
-                    }
-                
-                # Convert list of pairs to tuples
-                pairs = [tuple(pair) for pair in transaction_statement_pairs]
-                qprof = QueryProfiler(
-                    pairs,
-                    target_schema=target_schema,
-                    overwrite=overwrite
-                )
-                
-            elif source_type.lower() == "key_id":
-                if not key_id or not target_schema:
-                    return {
-                        "success": False,
-                        "error": "Both key_id and target_schema are required for source_type='key_id'"
-                    }
-                
-                qprof = QueryProfiler(
-                    key_id=key_id,
-                    target_schema=target_schema
-                )
-                
-            else:
-                return {
-                    "success": False,
-                    "error": f"Invalid source_type '{source_type}'. Must be 'query', 'transaction_statement', or 'key_id'"
-                }
         
         except Exception as e:
             return {
@@ -2132,6 +2161,13 @@ def get_query_plan(
         dict: Query plan information and execution details
     """
     try:
+        # Check if query profiling is available
+        if not QUERY_PROFILING_AVAILABLE:
+            return {
+                "success": False,
+                "error": f"Query profiling not available: {QUERY_PROFILING_ERROR}"
+            }
+        
         # Ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
@@ -2147,22 +2183,24 @@ def get_query_plan(
             if not source_type:
                 source_type = "query"  # Default
             
-            if source_type.lower() == "query" and query:
-                qprof = QueryProfiler(query, target_schema=target_schema)
-            elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
-                pairs = [tuple(pair) for pair in transaction_statement_pairs]
-                qprof = QueryProfiler(pairs, target_schema=target_schema)
-            elif source_type.lower() == "key_id" and key_id and target_schema:
-                qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
-            else:
-                return {
-                    "success": False,
-                    "error": "Either provide profiler_id or valid parameters to create new profiler"
-                }
+            with suppress_stdout_stderr():
+                if source_type.lower() == "query" and query:
+                    qprof = QueryProfiler(query, target_schema=target_schema)
+                elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
+                    pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                    qprof = QueryProfiler(pairs, target_schema=target_schema)
+                elif source_type.lower() == "key_id" and key_id and target_schema:
+                    qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
+                else:
+                    return {
+                        "success": False,
+                        "error": "Either provide profiler_id or valid parameters to create new profiler"
+                    }
         
         # Get query plan
         try:
-            query_plan = qprof.get_qplan()
+            with suppress_stdout_stderr():
+                query_plan = qprof.get_qplan()
             
             return {
                 "success": True,
@@ -2217,6 +2255,13 @@ def get_profiling_table(
         dict: Profiling table data and metadata
     """
     try:
+        # Check if query profiling is available
+        if not QUERY_PROFILING_AVAILABLE:
+            return {
+                "success": False,
+                "error": f"Query profiling not available: {QUERY_PROFILING_ERROR}"
+            }
+        
         # Ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
@@ -2232,22 +2277,24 @@ def get_profiling_table(
             if not source_type:
                 source_type = "query"  # Default
             
-            if source_type.lower() == "query" and query:
-                qprof = QueryProfiler(query, target_schema=target_schema)
-            elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
-                pairs = [tuple(pair) for pair in transaction_statement_pairs]
-                qprof = QueryProfiler(pairs, target_schema=target_schema)
-            elif source_type.lower() == "key_id" and key_id and target_schema:
-                qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
-            else:
-                return {
-                    "success": False,
-                    "error": "Either provide profiler_id or valid parameters to create new profiler"
-                }
+            with suppress_stdout_stderr():
+                if source_type.lower() == "query" and query:
+                    qprof = QueryProfiler(query, target_schema=target_schema)
+                elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
+                    pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                    qprof = QueryProfiler(pairs, target_schema=target_schema)
+                elif source_type.lower() == "key_id" and key_id and target_schema:
+                    qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
+                else:
+                    return {
+                        "success": False,
+                        "error": "Either provide profiler_id or valid parameters to create new profiler"
+                    }
         
         # Get available tables first
         try:
-            available_tables = qprof.get_table()
+            with suppress_stdout_stderr():
+                available_tables = qprof.get_table()
             
             if table_name not in available_tables:
                 return {
@@ -2263,7 +2310,8 @@ def get_profiling_table(
         
         # Get table data
         try:
-            table_data = qprof.get_table(table_name)
+            with suppress_stdout_stderr():
+                table_data = qprof.get_table(table_name)
             
             # Convert to JSON-serializable format safely
             try:
@@ -2367,6 +2415,13 @@ def get_query_performance_summary(
               query plan, and optimization recommendations
     """
     try:
+        # Check if query profiling is available
+        if not QUERY_PROFILING_AVAILABLE:
+            return {
+                "success": False,
+                "error": f"Query profiling not available: {QUERY_PROFILING_ERROR}"
+            }
+        
         # Ensure connection
         success, message = connection_manager.ensure_connected()
         if not success:
@@ -2382,18 +2437,19 @@ def get_query_performance_summary(
             if not source_type:
                 source_type = "query"  # Default
             
-            if source_type.lower() == "query" and query:
-                qprof = QueryProfiler(query, target_schema=target_schema)
-            elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
-                pairs = [tuple(pair) for pair in transaction_statement_pairs]
-                qprof = QueryProfiler(pairs, target_schema=target_schema)
-            elif source_type.lower() == "key_id" and key_id and target_schema:
-                qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
-            else:
-                return {
-                    "success": False,
-                    "error": "Either provide profiler_id or valid parameters to create new profiler"
-                }
+            with suppress_stdout_stderr():
+                if source_type.lower() == "query" and query:
+                    qprof = QueryProfiler(query, target_schema=target_schema)
+                elif source_type.lower() == "transaction_statement" and transaction_statement_pairs:
+                    pairs = [tuple(pair) for pair in transaction_statement_pairs]
+                    qprof = QueryProfiler(pairs, target_schema=target_schema)
+                elif source_type.lower() == "key_id" and key_id and target_schema:
+                    qprof = QueryProfiler(key_id=key_id, target_schema=target_schema)
+                else:
+                    return {
+                        "success": False,
+                        "error": "Either provide profiler_id or valid parameters to create new profiler"
+                    }
         
         # Collect comprehensive performance data
         performance_summary = {
@@ -2403,7 +2459,8 @@ def get_query_performance_summary(
         
         # 1. Get query plan
         try:
-            performance_summary["query_plan"] = qprof.get_qplan()
+            with suppress_stdout_stderr():
+                performance_summary["query_plan"] = qprof.get_qplan()
         except Exception as e:
             performance_summary["query_plan_error"] = f"Could not get query plan: {str(e)}"
         
@@ -2420,7 +2477,8 @@ def get_query_performance_summary(
         
         for table in key_tables:
             try:
-                table_data = qprof.get_table(table)
+                with suppress_stdout_stderr():
+                    table_data = qprof.get_table(table)
                 if hasattr(table_data, 'to_json'):
                     data_json = table_data.to_json()
                     data = json.loads(data_json)
@@ -2461,7 +2519,8 @@ def get_query_performance_summary(
         
         # 4. Get available tables list
         try:
-            performance_summary["available_tables"] = qprof.get_table()
+            with suppress_stdout_stderr():
+                performance_summary["available_tables"] = qprof.get_table()
         except Exception as e:
             performance_summary["available_tables_error"] = str(e)
         
