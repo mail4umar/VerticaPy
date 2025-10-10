@@ -2221,7 +2221,7 @@ def get_query_plan(
             "error": f"Unexpected error in get_query_plan: {str(e)}"
         }
 
-@mcp.tool()
+# @mcp.tool()
 def get_profiling_table(
     table_name: str,
     profiler_id: str = None,
@@ -2233,7 +2233,8 @@ def get_profiling_table(
     limit: int = 100
 ) -> dict:
     """
-    Get data from a specific profiling table.
+    Get data from a specific profiling table for a 
+    detailed analysis on a particular matter.
     
     Args:
         table_name (str): Name of the profiling table to retrieve:
@@ -2390,14 +2391,15 @@ def get_profiling_table(
             "error": f"Unexpected error in get_profiling_table: {str(e)}"
         }
 
-@mcp.tool()
+# @mcp.tool()
 def get_query_performance_summary(
     profiler_id: str = None,
     source_type: str = None,
     query: str = None,
     transaction_statement_pairs: list = None,
     target_schema: str = None,
-    key_id: str = None
+    key_id: str = None,
+    include_performance_tables: bool = False
 ) -> dict:
     """
     Get a comprehensive performance summary for the profiled query/queries.
@@ -2409,10 +2411,17 @@ def get_query_performance_summary(
         transaction_statement_pairs (list, optional): Transaction/statement pairs
         target_schema (str, optional): Target schema name
         key_id (str, optional): Existing key ID
+        include_performance_tables (bool): Whether to include detailed performance table data.
+                                          Defaults to False to prevent context overflow.
+                                          Set to True for detailed analysis.
     
     Returns:
-        dict: Comprehensive performance analysis including execution time, resource usage,
-              query plan, and optimization recommendations
+        dict: Comprehensive performance analysis including:
+              - query_plan: Complete execution plan
+              - query_plan_tooltips: Detailed metrics for each plan node (PATH IDs)
+              - key_metrics: Essential performance metrics extracted from query_profiles
+              - performance_data: Detailed table data (only if include_performance_tables=True)
+              - available_tables: List of available profiling tables
     """
     try:
         # Check if query profiling is available
@@ -2457,72 +2466,135 @@ def get_query_performance_summary(
             "profiling_source": source_type if source_type else "cached"
         }
         
-        # 1. Get query plan
+        # 1. Get query plan and tooltips
         try:
             with suppress_stdout_stderr():
                 performance_summary["query_plan"] = qprof.get_qplan()
+                
+                # Get detailed tooltips for each plan node
+                try:
+                    tooltips = qprof._get_tooltips()
+                    if tooltips:
+                        performance_summary["query_plan_tooltips"] = {
+                            str(path_id): tooltip_text for path_id, tooltip_text in tooltips.items()
+                        }
+                    else:
+                        performance_summary["query_plan_tooltips"] = {}
+                except Exception as tooltip_error:
+                    performance_summary["query_plan_tooltips_error"] = f"Could not get plan tooltips: {str(tooltip_error)}"
+                    
         except Exception as e:
             performance_summary["query_plan_error"] = f"Could not get query plan: {str(e)}"
         
-        # 2. Get key performance tables
-        key_tables = [
-            "query_profiles",
-            "dc_query_executions", 
-            "query_events",
-            "host_resources",
-            "resource_pool_status"
-        ]
-        
-        performance_data = {}
-        
-        for table in key_tables:
-            try:
-                with suppress_stdout_stderr():
-                    table_data = qprof.get_table(table)
-                if hasattr(table_data, 'to_json'):
-                    data_json = table_data.to_json()
-                    data = json.loads(data_json)
-                elif hasattr(table_data, 'values'):
-                    data = _to_json_serializable(table_data.values)
-                else:
-                    data = _to_json_serializable(table_data)
-                
-                # Limit to first 10 rows for summary
-                if isinstance(data, list) and len(data) > 10:
-                    data = data[:10]
-                
-                performance_data[table] = data
-                
-            except Exception as e:
-                performance_data[f"{table}_error"] = f"Could not get {table}: {str(e)}"
-        
-        performance_summary["performance_data"] = performance_data
-        
-        # 3. Extract key metrics from query_profiles if available
-        if "query_profiles" in performance_data and isinstance(performance_data["query_profiles"], list):
-            try:
-                query_profiles = performance_data["query_profiles"]
-                if len(query_profiles) > 0:
-                    profile = query_profiles[0]  # Take first profile
+        # 2. Get key performance tables (optional - only if explicitly requested)
+        if include_performance_tables:
+            key_tables = [
+                "query_profiles",
+                "dc_query_executions", 
+                "query_events",
+                "host_resources",
+                "resource_pool_status"
+            ]
+            
+            performance_data = {}
+            
+            for table in key_tables:
+                try:
+                    with suppress_stdout_stderr():
+                        table_data = qprof.get_table(table)
+                    if hasattr(table_data, 'to_json'):
+                        data_json = table_data.to_json()
+                        data = json.loads(data_json)
+                    elif hasattr(table_data, 'values'):
+                        data = _to_json_serializable(table_data.values)
+                    else:
+                        data = _to_json_serializable(table_data)
                     
-                    metrics = {}
-                    # Extract common performance metrics
-                    for key in ['execution_time', 'execution_time_us', 'queue_time_ms', 
-                               'planning_time_us', 'rows_produced', 'rows_loaded']:
-                        if key in profile:
-                            metrics[key] = profile[key]
+                    # Limit to first 10 rows for summary
+                    if isinstance(data, list) and len(data) > 10:
+                        data = data[:10]
                     
+                    performance_data[table] = data
+                    
+                except Exception as e:
+                    performance_data[f"{table}_error"] = f"Could not get {table}: {str(e)}"
+            
+            performance_summary["performance_data"] = performance_data
+        else:
+            # When performance tables are disabled, just note it
+            performance_summary["performance_data_note"] = "Performance table data excluded by default. Set include_performance_tables=True to include detailed table data."
+        
+        # 3. Extract key metrics (try to get essential metrics even without full performance tables)
+        try:
+            # Always try to get basic query_profiles for key metrics, even if performance tables are disabled
+            with suppress_stdout_stderr():
+                query_profiles_data = qprof.get_table("query_profiles")
+                
+            if hasattr(query_profiles_data, 'values'):
+                profiles_raw = _to_json_serializable(query_profiles_data.values)
+            elif hasattr(query_profiles_data, 'to_json'):
+                profiles_json = query_profiles_data.to_json()
+                profiles_raw = json.loads(profiles_json)
+            else:
+                profiles_raw = _to_json_serializable(query_profiles_data)
+            
+            # Extract key metrics from the first profile
+            if isinstance(profiles_raw, dict) and profiles_raw:
+                # Handle different data structures
+                metrics = {}
+                
+                # Common metric keys to extract
+                metric_keys = ['execution_time', 'execution_time_us', 'query_duration_us',
+                             'queue_time_ms', 'planning_time_us', 'rows_produced', 'rows_loaded']
+                
+                for key in metric_keys:
+                    if key in profiles_raw:
+                        value = profiles_raw[key]
+                        if isinstance(value, list) and len(value) > 0:
+                            metrics[key] = value[0]  # Take first value
+                        else:
+                            metrics[key] = value
+                
+                if metrics:
                     performance_summary["key_metrics"] = metrics
-                    
-            except Exception as e:
-                performance_summary["metrics_extraction_error"] = str(e)
+                else:
+                    performance_summary["key_metrics_note"] = "No standard metrics found in query_profiles"
+            
+            elif isinstance(profiles_raw, list) and len(profiles_raw) > 0:
+                # If it's a list, take the first profile
+                profile = profiles_raw[0]
+                metrics = {}
+                
+                for key in ['execution_time', 'execution_time_us', 'queue_time_ms', 
+                           'planning_time_us', 'rows_produced', 'rows_loaded']:
+                    if key in profile:
+                        metrics[key] = profile[key]
+                
+                if metrics:
+                    performance_summary["key_metrics"] = metrics
+            
+        except Exception as e:
+            performance_summary["key_metrics_error"] = f"Could not extract key metrics: {str(e)}"
         
-        # 4. Get available tables list
+        # 4. Get available tables list and usage info
         try:
             with suppress_stdout_stderr():
-                performance_summary["available_tables"] = qprof.get_table()
+                available_tables = qprof.get_table()
+                performance_summary["available_tables"] = {
+                    "tables": available_tables,
+                    "count": len(available_tables),
+                    "note": "Use get_profiling_table() to retrieve specific table data"
+                }
         except Exception as e:
             performance_summary["available_tables_error"] = str(e)
+        
+        # 5. Add summary information
+        performance_summary["summary_info"] = {
+            "includes_performance_tables": include_performance_tables,
+            "includes_query_plan": "query_plan" in performance_summary,
+            "includes_tooltips": "query_plan_tooltips" in performance_summary,
+            "includes_key_metrics": "key_metrics" in performance_summary
+        }
         
         return performance_summary
         
@@ -2620,6 +2692,72 @@ def clear_query_profilers(profiler_id: str = None) -> dict:
             "error": f"Failed to clear profiler cache: {str(e)}"
         }
 
+
+@mcp.tool()
+def get_query_performance_summary_lite(
+    profiler_id: str = None,
+    source_type: str = None,
+    query: str = None,
+    transaction_statement_pairs: list = None,
+    target_schema: str = None,
+    key_id: str = None
+) -> dict:
+    """
+    Get a lightweight performance summary that focuses on essential metrics only.
+    This is an alias for get_query_performance_summary with include_performance_tables=False.
+    
+    Perfect for Claude conversations as it provides all the essential performance insights
+    without the verbose table data that can cause context overflow.
+    
+    Returns:
+        dict: Lightweight performance summary with:
+              - query_plan: Complete execution plan
+              - query_plan_tooltips: Detailed metrics for each plan node (PATH IDs) 
+              - key_metrics: Essential performance metrics
+              - Available tables info (but not the data itself)
+    """
+    return get_query_performance_summary(
+        profiler_id=profiler_id,
+        source_type=source_type,
+        query=query,
+        transaction_statement_pairs=transaction_statement_pairs,
+        target_schema=target_schema,
+        key_id=key_id,
+        include_performance_tables=False
+    )
+
+
+# -----------------------------
+# Query Performance Summary Usage
+# -----------------------------
+"""
+OPTIMIZED QUERY PERFORMANCE ANALYSIS:
+
+🎯 RECOMMENDED APPROACH:
+1. Use get_query_performance_summary_lite() for most analysis
+   - Returns query plan + tooltips + key metrics
+   - No verbose table data to overwhelm Claude
+   - Perfect for performance insights and optimization
+
+2. Use get_query_performance_summary(include_performance_tables=True) only when:
+   - You need detailed table-by-table analysis
+   - Debugging specific profiling data
+   - Working with smaller result sets
+
+3. Use get_profiling_table() for specific deep-dives:
+   - Target specific tables (e.g., "query_profiles", "dc_query_executions")
+   - Apply custom limits and filters
+
+TOOLTIP INFORMATION:
+- query_plan_tooltips contains detailed metrics for each PATH ID in the execution plan
+- Each tooltip shows execution time, row counts, memory usage, and per-operator breakdowns
+- Use PATH ID numbers to correlate plan steps with their detailed metrics
+
+EXAMPLE WORKFLOW:
+1. get_query_performance_summary_lite() → Overall performance assessment
+2. Analyze tooltips for bottleneck identification  
+3. get_profiling_table("specific_table") → Deep dive if needed
+"""
 
 # -----------------------------
 # Run MCP Server
