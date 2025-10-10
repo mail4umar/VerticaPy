@@ -2562,6 +2562,18 @@ class Tree:
             self._compute_features_importance(tree_id=tree_id)
             return self._get_features_importance(tree_id=tree_id)
 
+    def _get_tree_classes(self, tree_arrays: list) -> np.ndarray:
+        """
+        Extracts unique class labels from the output of _compute_trees_arrays.
+        Returns a sorted numpy array of unique class labels.
+        """
+        value_array = tree_arrays[4]
+        unique_values = set()
+        for val in value_array:
+            if not isinstance(val, NoneType):
+                unique_values.add(val)
+        return np.array(sorted(unique_values))
+
     def features_importance(
         self,
         tree_id: Optional[int] = None,

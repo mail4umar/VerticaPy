@@ -2703,12 +2703,9 @@ class RandomForestClassifier(MulticlassClassifier, RandomForest):
         if len(self.classes_) == 0:
             try:
                 first_tree = self._compute_trees_arrays(self.get_tree(0), self.X, True)
-                unique_values = set()
-                for j in range(len(first_tree[4])):  # first_tree[4] is the value array
-                    if not isinstance(first_tree[4][j], NoneType):
-                        unique_values.add(first_tree[4][j])
-                if unique_values:
-                    self.classes_ = np.array(sorted(unique_values))
+                inferred_classes = self._get_tree_classes(first_tree)
+                if len(inferred_classes) > 0:
+                    self.classes_ = inferred_classes
                 else:
                     raise ModelError(
                         "Unable to determine classes: no valid values found in tree structure. "
