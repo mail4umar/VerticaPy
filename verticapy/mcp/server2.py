@@ -2221,7 +2221,7 @@ def get_query_plan(
             "error": f"Unexpected error in get_query_plan: {str(e)}"
         }
 
-# @mcp.tool()
+@mcp.tool()
 def get_profiling_table(
     table_name: str,
     profiler_id: str = None,
@@ -2315,46 +2315,36 @@ def get_profiling_table(
                 table_data = qprof.get_table(table_name)
             
             # Convert to JSON-serializable format safely
+            # ALWAYS use _to_json_serializable for consistency
             try:
-                if hasattr(table_data, 'values'):
-                    # If it's a TableSample or similar, use .values directly
-                    raw_data = _to_json_serializable(table_data.values)
+                truncated = False
+                
+                # Strategy: Limit data BEFORE full conversion to save memory
+                if hasattr(table_data, 'head'):
+                    # If it supports head(), limit at source to save memory
+                    limited_data = table_data.head(limit)
+                    truncated = True  # Assume truncation when using head()
                 elif hasattr(table_data, 'to_pandas'):
-                    # If it's a vDataFrame, convert to pandas first (more reliable)
+                    # Convert to pandas and limit before serialization
                     pandas_df = table_data.to_pandas()
-                    # Limit rows before conversion to avoid memory issues
                     if len(pandas_df) > limit:
                         pandas_df = pandas_df.head(limit)
                         truncated = True
-                    else:
-                        truncated = False
-                    raw_data = _to_json_serializable(pandas_df.to_dict('records'))
-                elif hasattr(table_data, 'to_json'):
-                    # Fallback: try to_json but with better error handling
-                    try:
-                        data_json = table_data.to_json()
-                        # Avoid parsing huge JSON strings that might cause issues
-                        if len(data_json) > 1000000:  # 1MB limit
-                            raise ValueError("JSON data too large, using alternative method")
-                        raw_data = json.loads(data_json)
-                        truncated = False
-                    except (json.JSONDecodeError, ValueError):
-                        # If JSON parsing fails, try pandas approach
-                        if hasattr(table_data, 'to_pandas'):
-                            pandas_df = table_data.to_pandas().head(limit)
-                            raw_data = _to_json_serializable(pandas_df.to_dict('records'))
-                            truncated = len(table_data) > limit if hasattr(table_data, '__len__') else True
-                        else:
-                            raise
+                    limited_data = pandas_df
                 else:
-                    # Direct serialization
-                    raw_data = _to_json_serializable(table_data)
-                    truncated = False
+                    # No way to limit at source, use full data
+                    limited_data = table_data
                 
-                # Apply limit if not already applied
-                if isinstance(raw_data, list) and len(raw_data) > limit and not truncated:
-                    data = raw_data[:limit]
-                    truncated = True
+                # Now use _to_json_serializable consistently on limited data
+                raw_data = _to_json_serializable(limited_data)
+                
+                # Apply limit if data is a list and wasn't limited at source
+                if isinstance(raw_data, list):
+                    if len(raw_data) > limit:
+                        data = raw_data[:limit]
+                        truncated = True
+                    else:
+                        data = raw_data
                 else:
                     data = raw_data
                     
@@ -2391,7 +2381,7 @@ def get_profiling_table(
             "error": f"Unexpected error in get_profiling_table: {str(e)}"
         }
 
-# @mcp.tool()
+@mcp.tool()
 def get_query_performance_summary(
     profiler_id: str = None,
     source_type: str = None,
@@ -2502,15 +2492,20 @@ def get_query_performance_summary(
                 try:
                     with suppress_stdout_stderr():
                         table_data = qprof.get_table(table)
-                    if hasattr(table_data, 'to_json'):
-                        data_json = table_data.to_json()
-                        data = json.loads(data_json)
-                    elif hasattr(table_data, 'values'):
-                        data = _to_json_serializable(table_data.values)
-                    else:
-                        data = _to_json_serializable(table_data)
                     
-                    # Limit to first 10 rows for summary
+                    # Limit data BEFORE conversion to save memory
+                    if hasattr(table_data, 'head'):
+                        limited_data = table_data.head(10)  # Only get 10 rows
+                    elif hasattr(table_data, 'to_pandas'):
+                        pandas_df = table_data.to_pandas()
+                        limited_data = pandas_df.head(10) if len(pandas_df) > 10 else pandas_df
+                    else:
+                        limited_data = table_data
+                    
+                    # ALWAYS use _to_json_serializable for consistency
+                    data = _to_json_serializable(limited_data)
+                    
+                    # Apply final limit if data is still a list
                     if isinstance(data, list) and len(data) > 10:
                         data = data[:10]
                     
@@ -2529,14 +2524,15 @@ def get_query_performance_summary(
             # Always try to get basic query_profiles for key metrics, even if performance tables are disabled
             with suppress_stdout_stderr():
                 query_profiles_data = qprof.get_table("query_profiles")
-                
-            if hasattr(query_profiles_data, 'values'):
-                profiles_raw = _to_json_serializable(query_profiles_data.values)
-            elif hasattr(query_profiles_data, 'to_json'):
-                profiles_json = query_profiles_data.to_json()
-                profiles_raw = json.loads(profiles_json)
+            
+            # Limit data before conversion
+            if hasattr(query_profiles_data, 'head'):
+                limited_profiles = query_profiles_data.head(1)  # Only need first row for metrics
             else:
-                profiles_raw = _to_json_serializable(query_profiles_data)
+                limited_profiles = query_profiles_data
+                
+            # ALWAYS use _to_json_serializable
+            profiles_raw = _to_json_serializable(limited_profiles)
             
             # Extract key metrics from the first profile
             if isinstance(profiles_raw, dict) and profiles_raw:
