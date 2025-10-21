@@ -2722,6 +2722,107 @@ def get_query_performance_summary_lite(
         include_performance_tables=False
     )
 
+@mcp.prompt()
+def analyze_query_performance(
+    query: str = None,
+    target_schema: str = None,
+    key_id: str = None
+) -> str:
+    """
+    Deep dive into query performance with profiling and optimization suggestions.
+    Provide either 'query' for ad-hoc analysis OR 'key_id' and 'target_schema' for existing queries.
+    
+    Args:
+        query: SQL query to analyze (for new query analysis)
+        target_schema: Schema where profiling tables exist (required with key_id)
+        key_id: Existing query key_id to analyze (alternative to query)
+    """
+    if key_id and target_schema:
+        source_info = f'key_id "{key_id}" in schema "{target_schema}"'
+        profiler_params = f'source_type="key_id", key_id="{key_id}", target_schema="{target_schema}"'
+    elif query:
+        source_info = f'query: "{query[:100]}{"..." if len(query) > 100 else ""}"'
+        profiler_params = f'source_type="query", query="{query}"'
+    else:
+        source_info = "the specified query"
+        profiler_params = "appropriate parameters"
+    
+    return f"""# Query Performance Analysis Workflow
+
+I need to analyze query performance for: {source_info}
+
+Please follow this comprehensive profiling workflow:
+
+## Step 1: Connect to Database
+- Use `connect_to_vertica()` if not already connected
+
+## Step 2: Create Query Profiler
+- Use `create_query_profiler({profiler_params})`
+- Store the profiler_id returned for subsequent calls
+
+## Step 3: Get Execution Plan
+- Use `get_query_plan()` with the profiler_id
+- Show me the execution plan tree
+- Explain the major execution steps in plain English
+
+## Step 4: Get Performance Summary
+- Use `get_query_performance_summary_lite()` with the profiler_id
+- Analyze the query_plan_tooltips for each PATH ID
+- Focus on:
+  - **Execution times**: Which steps are slowest?
+  - **Row counts**: Any unexpected cardinality?
+  - **Memory usage**: Any spills or high memory consumption?
+  - **Wait times**: Where is the query waiting?
+
+## Step 5: Identify Bottlenecks
+Look for and explain:
+- Steps with high execution time (>50% of total)
+- Large intermediate result sets
+- Full table scans on large tables
+- Expensive sorts or aggregations
+- Network transfer bottlenecks
+- Resource contention issues
+
+## Step 6: Detailed Table Analysis (if needed)
+If bottlenecks are unclear, use `get_profiling_table()` to examine:
+- `query_profiles`: Overall query metrics
+- `execution_engine_profiles`: Engine-level stats
+- `dc_plan_activities`: Activity breakdowns
+- `dc_query_executions`: Per-node execution
+- `query_plan_profiles`: Operator-level stats
+
+## Step 7: Optimization Recommendations
+Based on profiling data, provide:
+
+**High Priority** (biggest impact):
+1. Specific optimization with expected improvement
+2. Implementation steps
+3. Risks and considerations
+
+**Medium Priority** (moderate impact):
+- Additional optimizations
+
+**Low Priority** (polish):
+- Minor improvements
+
+Include specific examples:
+- Missing indexes to create
+- Query rewrites to apply
+- Projection improvements
+- Better join strategies
+
+## Step 8: Summary Report
+Provide:
+- **Current Performance**: Execution time, rows processed, memory used
+- **Performance Rating**: Excellent/Good/Fair/Poor (with justification)
+- **Top 3 Bottlenecks**: With percentage of total time
+- **Optimization Plan**: Prioritized action items with expected improvements
+- **Expected Outcome**: Predicted performance after optimizations
+
+Please be specific, actionable, and include concrete examples where applicable.
+
+Wherever possible create visuals (e.g., charts, graphs) to illustrate key points. But do this at the end after the analysis is done. And don't make it too complicated or time consuming.
+"""
 
 # -----------------------------
 # Query Performance Summary Usage
@@ -2753,6 +2854,541 @@ EXAMPLE WORKFLOW:
 1. get_query_performance_summary_lite() → Overall performance assessment
 2. Analyze tooltips for bottleneck identification  
 3. get_profiling_table("specific_table") → Deep dive if needed
+"""
+
+@mcp.prompt()
+def compare_query_profiles(
+    query1_key_id: str,
+    query1_target_schema: str,
+    query2_key_id: str,
+    query2_target_schema: str,
+    query1_label: str = "Query 1",
+    query2_label: str = "Query 2"
+) -> str:
+    """
+    Comprehensive side-by-side comparison of two query profiles to identify performance differences.
+    This is typically used when one query is significantly slower than another to understand WHY.
+    
+    NO optimization recommendations are provided - this is purely comparative analysis.
+    Use this BEFORE diving into optimization to understand the delta between queries.
+    
+    Args:
+        query1_key_id: Key ID for first query profile
+        query1_target_schema: Schema containing first query's profiling tables
+        query2_key_id: Key ID for second query profile
+        query2_target_schema: Schema containing second query's profiling tables
+        query1_label: Descriptive label for first query (e.g., "Fast Query", "Production")
+        query2_label: Descriptive label for second query (e.g., "Slow Query", "Test")
+    """
+    return f"""# Query Profile Comparison: {query1_label} vs {query2_label}
+
+I need a thorough, side-by-side comparison of two query profiles to understand their performance differences.
+
+**IMPORTANT CONSTRAINTS**:
+- This is COMPARISON ONLY - do NOT provide optimization recommendations
+- Focus on identifying WHAT is different, not WHY or HOW to fix
+- Be quantitative and specific with all metrics
+- This is the first step before debugging - document all differences
+
+## Query Identifiers:
+- **{query1_label}**: key_id={query1_key_id}, schema={query1_target_schema}
+- **{query2_label}**: key_id={query2_key_id}, schema={query2_target_schema}
+
+---
+
+## Phase 1: Profile Setup and Validation
+
+### 1.1 Connect to Database
+- Use `connect_to_vertica()` to establish connection
+
+### 1.2 Create Both Profilers
+- **Profiler 1**: `create_query_profiler(source_type="key_id", key_id="{query1_key_id}", target_schema="{query1_target_schema}")`
+  - Store returned profiler_id as `profiler1_id`
+  
+- **Profiler 2**: `create_query_profiler(source_type="key_id", key_id="{query2_key_id}", target_schema="{query2_target_schema}")`
+  - Store returned profiler_id as `profiler2_id`
+
+### 1.3 Validate Both Profiles Exist
+- Confirm both profilers created successfully
+- Note any errors or warnings
+
+---
+
+## Phase 2: High-Level Performance Metrics Comparison
+
+### 2.1 Get Performance Summaries
+- **{query1_label}**: `get_query_performance_summary_lite(profiler_id=profiler1_id)`
+- **{query2_label}**: `get_query_performance_summary_lite(profiler_id=profiler2_id)`
+
+### 2.2 Compare Overall Execution Metrics
+
+Create a comparison table for key metrics from query_profiles:
+
+| Metric | {query1_label} | {query2_label} | Delta | Delta % |
+|--------|---------|---------|-------|---------|
+| **Execution Time (ms)** | X,XXX | X,XXX | +X,XXX | +XX% |
+| **Total Rows Processed** | X,XXX,XXX | X,XXX,XXX | +X,XXX,XXX | +XX% |
+| **Memory Used (MB)** | XXX | XXX | +XXX | +XX% |
+| **Planning Time (ms)** | XX | XX | +XX | +XX% |
+| **Queue Time (ms)** | XX | XX | +XX | +XX% |
+
+**Calculate and highlight**:
+- Which query is slower? By how much? (absolute and percentage)
+- Which metric has the LARGEST percentage difference?
+- Are there any surprisingly large deltas?
+
+### 2.3 Resource Usage Comparison
+
+Compare resource consumption:
+
+| Resource | {query1_label} | {query2_label} | Difference |
+|----------|---------|---------|------------|
+| CPU Time | X.Xs | X.Xs | +X.Xs |
+| Network Bytes | XMB | XMB | +XMB |
+| Temp Space Used | XMB | XMB | +XMB |
+| Spills to Disk | X | X | +X |
+
+**Highlight**:
+- Any resource that shows >2x difference
+- Any spills (disk writes) that differ significantly
+
+---
+
+## Phase 3: Execution Plan Comparison
+
+### 3.1 Get Both Query Plans
+- **{query1_label}**: `get_query_plan(profiler_id=profiler1_id)`
+- **{query2_label}**: `get_query_plan(profiler_id=profiler2_id)`
+
+### 3.2 Structural Comparison
+
+Analyze plan structure:
+
+**Plan Complexity**:
+- {query1_label}: How many operators/nodes?
+- {query2_label}: How many operators/nodes?
+- Are the plans structurally similar or different?
+
+**Operator Types Used**:
+- List unique operator types in each plan
+- Are both queries using the same types of operators?
+- Any operators present in one but not the other?
+
+**Join Strategy**:
+- {query1_label}: What join types? (hash, merge, nested loop)
+- {query2_label}: What join types?
+- Are join strategies the same or different?
+
+**Scan Methods**:
+- {query1_label}: Full scans vs index scans vs projection scans?
+- {query2_label}: Full scans vs index scans vs projection scans?
+- Different scan strategies?
+
+### 3.3 Plan Visualization Comparison
+
+For each query plan:
+1. Show the execution plan tree
+2. Mark the most expensive nodes (top 3 by time)
+3. Note the overall plan depth and branching
+
+**Key Observations**:
+- Do the plans follow the same logical structure?
+- Where do the plans first diverge (if at all)?
+- Which plan has more complex operations?
+
+---
+
+## Phase 4: Path-by-Path Comparison (Detailed Operator Analysis)
+
+### 4.1 Extract Path Metrics from Tooltips
+
+For both queries, from `query_plan_tooltips`:
+
+**{query1_label} - Top 5 Most Expensive Paths**:
+| PATH ID | Operator | Execution Time (ms) | Rows Out | Memory (MB) | % of Total |
+|---------|----------|---------------------|----------|-------------|------------|
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+
+**{query2_label} - Top 5 Most Expensive Paths**:
+| PATH ID | Operator | Execution Time (ms) | Rows Out | Memory (MB) | % of Total |
+|---------|----------|---------------------|----------|-------------|------------|
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+| XX | [operator] | X,XXX | X,XXX,XXX | XXX | XX% |
+
+### 4.2 Identify Divergent Paths
+
+**Compare similar operators**:
+- Are both queries doing similar operations (joins, aggregations, scans)?
+- For matching operations, compare their metrics side-by-side
+- Identify operations that exist in one query but not the other
+
+**Highlight largest differences**:
+- Which PATH IDs show >5x time difference for similar operations?
+- Which operators process drastically different row counts?
+- Any operator using significantly more memory in one query?
+
+### 4.3 Row Count Analysis
+
+Compare row counts at each major stage:
+
+| Stage | {query1_label} Rows | {query2_label} Rows | Ratio |
+|-------|------------|------------|-------|
+| Initial Scan | X,XXX,XXX | X,XXX,XXX | X.Xx |
+| After Filters | X,XXX,XXX | X,XXX,XXX | X.Xx |
+| After Joins | X,XXX,XXX | X,XXX,XXX | X.Xx |
+| After Aggregation | X,XXX | X,XXX | X.Xx |
+| Final Output | X,XXX | X,XXX | X.Xx |
+
+**Key Observations**:
+- Where do row counts diverge significantly?
+- Does one query process many more intermediate rows?
+- Any unexpected cardinality explosions?
+
+---
+
+## Phase 5: Detailed Profiling Table Comparisons
+
+### 5.1 Compare query_profiles Table
+
+Use `get_profiling_table("query_profiles", profiler_id=profiler1_id, limit=5)` for both queries.
+
+Compare critical fields:
+
+**Execution Breakdown**:
+| Field | {query1_label} | {query2_label} | Delta |
+|-------|---------|---------|-------|
+| request_duration_ms | X,XXX | X,XXX | +X,XXX |
+| processing_time_ms | X,XXX | X,XXX | +X,XXX |
+| acquisition_time_ms | XX | XX | +XX |
+| parse_time_ms | XX | XX | +XX |
+| plan_time_ms | XX | XX | +XX |
+| execution_time_ms | X,XXX | X,XXX | +X,XXX |
+
+**Resource Consumption**:
+| Field | {query1_label} | {query2_label} | Delta |
+|-------|---------|---------|-------|
+| memory_acquired_mb | XXX | XXX | +XXX |
+| read_bytes | XMB | XMB | +XMB |
+| written_bytes | XMB | XMB | +XMB |
+| total_rows_processed | X,XXX,XXX | X,XXX,XXX | +X,XXX,XXX |
+
+### 5.2 Compare dc_query_executions Table
+
+Use `get_profiling_table("dc_query_executions", profiler_id=profiler1_id, limit=10)` for both.
+
+**Per-Node Execution**:
+- Number of nodes involved: {query1_label} vs {query2_label}
+- Execution time variance across nodes
+- Any nodes showing significantly different behavior?
+
+**Network Activity**:
+- Bytes sent between nodes
+- Network wait times
+- Are there different network patterns?
+
+### 5.3 Compare projection_usage Table
+
+Use `get_profiling_table("projection_usage", profiler_id=profiler1_id, limit=10)` for both.
+
+**Projection Comparison**:
+
+{query1_label} Projections Used:
+- Projection 1: [name], rows_read: X,XXX,XXX
+- Projection 2: [name], rows_read: X,XXX,XXX
+- ...
+
+{query2_label} Projections Used:
+- Projection 1: [name], rows_read: X,XXX,XXX
+- Projection 2: [name], rows_read: X,XXX,XXX
+- ...
+
+**Key Differences**:
+- Are the same projections being used?
+- Different projections for the same table?
+- Significantly different row counts from projections?
+
+### 5.4 Compare query_events Table (if available)
+
+Use `get_profiling_table("query_events", profiler_id=profiler1_id, limit=20)` for both.
+
+**Event Analysis**:
+- What events occurred during each query?
+- Any waits, blocks, or resource contention?
+- Different event patterns between queries?
+
+---
+
+## Phase 6: Statistical Summary of Differences
+
+### 6.1 Categorize Differences by Magnitude
+
+**CRITICAL Differences** (>5x or >1000% difference):
+- List metrics with extreme differences
+- Example: "{query2_label} execution time is 8.5x longer (850% increase)"
+
+**MAJOR Differences** (2x-5x or 100%-500% difference):
+- List significant differences
+- Example: "Memory usage 3.2x higher in {query2_label}"
+
+**MODERATE Differences** (1.5x-2x or 50%-100% difference):
+- List moderate differences
+- Example: "Row processing 1.7x higher"
+
+**MINOR Differences** (<1.5x or <50% difference):
+- List small differences
+- Note: These may not be significant
+
+### 6.2 Identify the Dominant Factor
+
+**Primary Performance Driver**:
+Based on the comparison, what is the SINGLE biggest difference causing the performance gap?
+
+Options to consider:
+- [ ] Execution plan structure (different operators or order)
+- [ ] Row count differences (one processes many more rows)
+- [ ] Projection usage (different or suboptimal projections)
+- [ ] Resource constraints (memory, CPU, network)
+- [ ] Data distribution (skew, node imbalance)
+- [ ] Queueing/contention (wait times)
+
+**Confidence Level**: High / Medium / Low
+**Explanation**: [Explain why this factor is dominant with specific metrics]
+
+### 6.3 Secondary Factors
+
+List 2-3 additional factors contributing to differences:
+1. [Factor]: [Specific metrics showing this]
+2. [Factor]: [Specific metrics showing this]
+3. [Factor]: [Specific metrics showing this]
+
+---
+
+## Phase 7: Visual Comparison Summary
+
+Now create comprehensive visualizations to illustrate the comparison findings.
+
+### 7.1 Performance Comparison Charts
+
+Create visualizations comparing key performance dimensions:
+
+**Chart 1: Side-by-Side Performance Metrics**
+- Bar chart comparing: Execution Time, Memory Usage, Rows Processed, Network I/O
+- Show both queries side-by-side with percentage differences labeled
+- Highlight the metric with the largest difference
+
+**Chart 2: Execution Phase Breakdown**
+- Stacked bar or pie charts showing time distribution for both queries
+- Phases: Planning, Queue Wait, Execution, Finalization
+- Include percentages for each phase
+
+**Chart 3: Top Operators Comparison**
+- Grouped bar chart of the top 5 most expensive operator types
+- Compare time spent in each operator category between queries
+- Show percentage increase/decrease
+
+**Chart 4: Resource Utilization Dashboard**
+- Multi-metric comparison visualization (radar chart, spider chart, or multi-bar)
+- Dimensions: CPU, Memory, Rows Processed, Network, Disk I/O
+- Normalize to {query1_label} as baseline (1.0)
+
+### 7.2 Visualization Guidelines
+
+When creating these charts:
+- Use clear, distinct colors for {query1_label} and {query2_label}
+- Include actual values and percentages in labels
+- Make the winner/faster query visually distinct
+- Highlight critical differences (>5x) with annotations
+- Keep charts clean and readable
+- Use artifacts for interactive/rich visualizations
+
+---
+
+## Phase 8: Final Comparison Summary
+
+**IMPORTANT**: Create the final summary as a **rich, interactive artifact** (HTML/React) for better visual appeal and readability. The artifact should include:
+- Color-coded performance metrics with visual indicators
+- Interactive charts and graphs
+- Prominent highlighting of critical differences
+- Professional dashboard-style layout
+
+### 8.1 Executive Summary
+
+**Performance Delta**:
+- {query2_label} is **X.Xx times slower** than {query1_label}
+- Absolute time difference: **+X,XXX milliseconds** (X.Xs)
+- Primary bottleneck accounts for **XX%** of the difference
+
+**Resource Impact**:
+- Memory: **X.Xx times more** used by {query2_label}
+- Rows: **X.Xx times more** processed by {query2_label}
+- Network: **X.Xx times more** data transferred
+
+### 8.2 Critical Differences (Top 3)
+
+**1. [Most Significant Difference]**
+- Metric: [specific metric]
+- {query1_label}: [value]
+- {query2_label}: [value]
+- Delta: [absolute and percentage]
+- Impact: [how this affects overall performance]
+
+**2. [Second Most Significant]**
+- Metric: [specific metric]
+- {query1_label}: [value]
+- {query2_label}: [value]
+- Delta: [absolute and percentage]
+- Impact: [how this affects overall performance]
+
+**3. [Third Most Significant]**
+- Metric: [specific metric]
+- {query1_label}: [value]
+- {query2_label}: [value]
+- Delta: [absolute and percentage]
+- Impact: [how this affects overall performance]
+
+### 8.3 Structural Differences
+
+**Execution Plan**:
+- [ ] Plans are identical in structure
+- [ ] Plans differ in operator choice
+- [ ] Plans differ in join order
+- [ ] Plans differ in number of operations
+
+**Data Access**:
+- [ ] Same projections used
+- [ ] Different projections used
+- [ ] Different tables/columns accessed
+- [ ] Different predicates applied
+
+**Processing Strategy**:
+- [ ] Same processing approach
+- [ ] Different join strategies
+- [ ] Different aggregation methods
+- [ ] Different sorting/ordering
+
+### 8.4 Root Cause Analysis
+
+**CRITICAL ASSESSMENT**: Determine if the performance difference is due to:
+
+**A. Vertica Server Bug/Issue** 🔴
+- [ ] Query optimizer choosing suboptimal plan despite good statistics
+- [ ] Unexpected resource consumption patterns
+- [ ] Known Vertica bug affecting specific operators
+- [ ] Anomalous behavior inconsistent with query structure
+- [ ] Server-side performance regression
+- [ ] Catalog/metadata issues
+
+**B. Query/Usage Issue** 🟡
+- [ ] Missing or stale statistics causing poor planning
+- [ ] Suboptimal query structure or SQL pattern
+- [ ] Missing projections or indexes
+- [ ] Data skew or distribution problems
+- [ ] Inefficient joins or predicates
+- [ ] Expected behavior given query design
+
+**C. Data or Schema Issue** 🟢
+- [ ] Table design not optimized for access pattern
+- [ ] Segmentation key misalignment
+- [ ] Projection design issues
+- [ ] Data volume or cardinality changes
+- [ ] Schema evolution causing regressions
+
+**PRIMARY CLASSIFICATION**: [Vertica Bug / Usage Issue / Data Issue]
+
+**CONFIDENCE**: [High / Medium / Low]
+
+**DETAILED EXPLANATION**:
+[Provide specific evidence from the comparison data that supports this classification. Include:
+- Specific metrics or behaviors that indicate bug vs usage issue
+- Whether the slower query's plan is "wrong" or just "different"
+- If there are known Vertica patterns that match this behavior
+- Whether this is fixable by query rewriting or requires Vertica intervention]
+
+**RECOMMENDED ESCALATION PATH**:
+- [ ] No escalation needed - usage/design issue
+- [ ] Consult Vertica documentation for best practices
+- [ ] Contact Vertica support - potential server issue
+- [ ] File Vertica bug report with reproduction case
+
+### 8.5 Key Metrics Dashboard
+
+Include this in your artifact summary with visual styling and highlighting:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║                   QUERY COMPARISON DASHBOARD                  ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Execution Time:  {query1_label}: 2.3s  │  {query2_label}: 5.8s  (+152%)   ║
+║  Memory Usage:    {query1_label}: 450MB │  {query2_label}: 820MB (+82%)    ║
+║  Rows Processed:  {query1_label}: 1.2M  │  {query2_label}: 3.8M  (+217%)   ║
+║  Network I/O:     {query1_label}: 85MB  │  {query2_label}: 180MB (+112%)   ║
+║                                                              ║
+║  Winner: {query1_label} is 2.52x FASTER                             ║
+║                                                              ║
+║  Dominant Factor: [PRIMARY DIFFERENCE]                       ║
+║  Root Cause: [BUG / USAGE / DATA ISSUE]                      ║
+║  Confidence: [High/Medium/Low]                               ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+### 8.6 Comparison Confidence Assessment
+
+**Data Quality**:
+- [ ] Both profiles complete and comprehensive
+- [ ] Some missing data in one or both profiles
+- [ ] Limited profiling data available
+
+**Comparability**:
+- [ ] Queries are highly similar (same operation)
+- [ ] Queries are related but different
+- [ ] Queries are fundamentally different
+
+**Conclusion Confidence**: **[High / Medium / Low]**
+
+**Reason**: [Explain confidence level based on data quality and comparability]
+
+---
+
+## Phase 9: Next Steps (Guidance Only, NO Recommendations)
+
+This comparison is complete. Based on the findings:
+
+**If proceeding to optimization**:
+- Focus investigation on: [the dominant factor identified]
+- Deep dive into: [specific profiling tables that showed largest differences]
+- Consider examining: [secondary factors]
+
+**If the queries should be identical**:
+- Investigate why: [specific structural differences exist]
+- Review: [tables/projections that differ]
+
+**If this is expected behavior**:
+- Document baseline: [{query1_label} metrics as reference]
+- Monitor for regression: [specific metrics to track]
+
+---
+
+## IMPORTANT REMINDERS
+
+Throughout this analysis:
+- ✅ BE QUANTITATIVE: Always include specific numbers, not just "faster" or "slower"
+- ✅ BE COMPARATIVE: Show side-by-side comparisons, not isolated metrics  
+- ✅ BE VISUAL: Use tables, charts, and formatted output
+- ✅ BE THOROUGH: Cover execution, resources, plans, and operators
+- ❌ NO RECOMMENDATIONS: This is comparison only, not optimization
+- ❌ NO SPECULATION: Report what the data shows, not what might be wrong
+- ❌ NO SOLUTIONS: Identify differences, don't suggest fixes
+
+This comparison serves as the foundation for debugging and optimization efforts.
 """
 
 # -----------------------------
