@@ -14,7 +14,9 @@ OR CONDITIONS OF ANY KIND, either express or implied.
 See the  License for the specific  language governing
 permissions and limitations under the License.
 """
+import os
 import time
+from pathlib import Path
 from typing import Any, Literal, Optional
 
 import verticapy._config.config as conf
@@ -180,7 +182,14 @@ def _executeSQL(
     if data:
         cursor.executemany(query, data)
     elif method == "copy":
-        with open(path, "r", encoding="utf-8") as f:
+        if not path:
+            raise ValueError("path must be provided when method='copy'")
+        # Validate path to prevent path traversal attacks
+        file_path = Path(path).resolve()
+        # Ensure the resolved path exists and is a file
+        if not file_path.is_file():
+            raise ValueError(f"File not found or is not a regular file: {path}")
+        with open(file_path, "r", encoding="utf-8") as f:
             cursor.copy(query, f)
     else:
         cursor.execute(query)
