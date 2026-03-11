@@ -1216,6 +1216,44 @@ def format_type(*args, dtype: Literal[NoneType, dict, list], na_out: Any = None)
         return res
 
 
+def _replace_outside_quotes(query: str, replacements: list) -> str:
+    """
+    Applies string replacements only on content outside
+    single-quoted string literals and double-quoted identifiers,
+    so that SQL keywords embedded in table/column names are
+    never corrupted.
+    """
+    result = []
+    i = 0
+    n = len(query)
+    while i < n:
+        c = query[i]
+        if c in ('"', "'"):
+            # Copy quoted content verbatim until the matching closing quote.
+            quote_char = c
+            result.append(c)
+            i += 1
+            while i < n:
+                c = query[i]
+                result.append(c)
+                i += 1
+                if c == quote_char:
+                    break
+        else:
+            matched = False
+            for old, new in replacements:
+                lo = len(old)
+                if query[i : i + lo] == old:
+                    result.append(new)
+                    i += lo
+                    matched = True
+                    break
+            if not matched:
+                result.append(c)
+                i += 1
+    return "".join(result)
+
+
 def indent_vpy_sql(query: SQLExpression) -> SQLExpression:
     """
     Indents the input SQL query.
@@ -1254,17 +1292,18 @@ def indent_vpy_sql(query: SQLExpression) -> SQLExpression:
         construct others, simplifying the overall
         code.
     """
-    query = (
-        query.replace("SELECT", "\n   SELECT\n    ")
-        .replace("FROM", "\n   FROM\n")
-        .replace("ORDER BY", "\n   ORDER BY")
-        .replace("GROUP BY", "\n   GROUP BY")
-        .replace("LIMIT", "\n   LIMIT")
-        .replace("OFFSET", "\n   OFFSET")
-        .replace("WHERE", "\n   WHERE")
-        .replace(",", ",\n    ")
-    )
-    query = query.replace("VERTICAPY_SUBTABLE", "\nVERTICAPY_SUBTABLE")
+    _kw_replacements = [
+        ("ORDER BY", "\n   ORDER BY"),
+        ("GROUP BY", "\n   GROUP BY"),
+        ("SELECT", "\n   SELECT\n    "),
+        ("FROM", "\n   FROM\n"),
+        ("LIMIT", "\n   LIMIT"),
+        ("OFFSET", "\n   OFFSET"),
+        ("WHERE", "\n   WHERE"),
+        (",", ",\n    "),
+        ("VERTICAPY_SUBTABLE", "\nVERTICAPY_SUBTABLE"),
+    ]
+    query = _replace_outside_quotes(query, _kw_replacements)
     n = len(query)
     return_l = []
     j = 1
