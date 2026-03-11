@@ -16,6 +16,9 @@ permissions and limitations under the License.
 """
 import pytest
 
+import verticapy as vp
+from verticapy.sql import drop
+
 
 class TestVDFSys:
     """
@@ -28,6 +31,28 @@ class TestVDFSys:
         """
         res = titanic_vd_fun.current_relation().split(".")[1].replace('"', "")
         assert res == "titanic"
+
+    def test_current_relation_sql_keyword_in_table_name(self):
+        """
+        Regression test: current_relation() must not corrupt table names
+        that contain SQL keywords (e.g. SELECT inside SELECTION).
+        See: https://github.com/vertica/VerticaPy/issues/XXXX
+        """
+        table_name = "TEST_SELECTION_BUG"
+        drop(table_name)
+        try:
+            vdf = vp.vDataFrame({"x": [1, 2, 3]})
+            vdf.to_db(table_name)
+            vdf = vp.vDataFrame(table_name)
+            relation = vdf.current_relation()
+            assert "SELECT" not in relation.split(table_name)[0], (
+                f"current_relation() corrupted the table name: {relation}"
+            )
+            assert table_name in relation, (
+                f"Table name missing from current_relation(): {relation}"
+            )
+        finally:
+            drop(table_name)
 
     def test_del_catalog(self, titanic_vd_fun):
         """
