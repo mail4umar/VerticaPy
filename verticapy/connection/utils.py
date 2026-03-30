@@ -196,3 +196,4 @@ def validate_path(path: str):
         raise ValueError(
             f"Cannot use path '{path}': directory is not owned by the current user."
         )
+    return path
